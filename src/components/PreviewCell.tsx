@@ -5,10 +5,13 @@ import { cn } from "../lib/cn";
 import { coloringToCss } from "../color/simulate";
 import {
   artworkOwnColoring,
+  coloringColors,
   describeColoring,
   effectiveColoring,
+  formatCmyk,
   logoColoringForGroup,
 } from "../lib/coloring";
+import type { Coloring } from "../types";
 import { actions, useAppState } from "../state/store";
 import { renderArtworkSvg } from "../svg/render";
 
@@ -82,7 +85,9 @@ export function PreviewCell({
       className={cn(
         "border-r border-b border-neutral-200 flex flex-col justify-center relative group/cell w-full h-full items-center overflow-hidden transition-shadow duration-150 cursor-pointer scroll-mt-[120px] scroll-ml-[200px]",
         isOmitted && "bg-neutral-50",
-        !isSelected && "hover:ring-2 hover:ring-inset hover:ring-indigo-400/50",
+        !isSelected && !hasSpecChange && "hover:ring-2 hover:ring-inset hover:ring-indigo-400/50",
+        // Edited cells stay outlined in magenta so they're obvious at a glance.
+        !isSelected && hasSpecChange && "ring-2 ring-inset ring-[#E6007E]",
         isSelected && "ring-2 ring-inset ring-indigo-600 z-20",
       )}
       style={isOmitted ? undefined : { background: coloringToCss(bgColoring) }}
@@ -110,14 +115,13 @@ export function PreviewCell({
         />
       </div>
 
-      {/* Override indicator */}
+      {/* Override indicator — names the changed side(s) and the new build */}
       {hasSpecChange && (
-        <div
-          className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-white/95 border border-neutral-300 rounded-full px-2 py-0.5 shadow-sm font-mono text-[7.5px] font-bold tracking-tight z-20"
-          title="This cell deviates from its row/column specification"
-        >
-          <div className="w-1.5 h-1.5 rounded-full bg-[#E6007E]" />
-          <span>SPEC ADJ</span>
+        <div className="absolute top-1.5 left-1.5 max-w-[calc(100%-28px)] flex flex-col gap-0.5 z-20 items-start pointer-events-none">
+          {override?.logo && (
+            <ChangeChip side="Logo" from={logoColoringForGroup(logoVar, group)} to={override.logo} />
+          )}
+          {override?.bg && <ChangeChip side="Bg" from={bgVar.coloring} to={override.bg} />}
         </div>
       )}
 
@@ -154,6 +158,23 @@ export function PreviewCell({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Magenta chip naming an edited side and its new CMYK build (vs the spec). */
+function ChangeChip({ side, from, to }: { side: string; from: Coloring; to: Coloring }) {
+  const toBuild = coloringColors(to).map(formatCmyk).join(" / ");
+  const fromBuild = coloringColors(from).map(formatCmyk).join(" / ");
+  return (
+    <div
+      className="max-w-full flex items-center gap-1 bg-white border border-[#E6007E] rounded px-1.5 py-0.5 shadow-sm"
+      title={`${side} edited — was ${fromBuild}  →  now ${toBuild}`}
+    >
+      <span className="text-[7px] font-black uppercase tracking-wider text-[#E6007E] shrink-0">
+        {side} ✎
+      </span>
+      <span className="font-mono text-[7.5px] font-bold text-neutral-700 truncate">{toBuild}</span>
     </div>
   );
 }
