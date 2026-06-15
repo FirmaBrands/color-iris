@@ -77,11 +77,11 @@ export function DropOverlay() {
         depth.current = 0;
         setActive(false);
         setHover(null);
-        const groupId = getState().groups[0].id;
+        const group = getState().groups[0];
         readSvgFile(e.dataTransfer?.files?.[0], (text) =>
           side === "logo"
-            ? actions.loadLogoSvg(groupId, text)
-            : actions.loadBgSvg(groupId, text),
+            ? actions.loadLogoSvg(group.id, text)
+            : actions.loadRowBgSvg(group.id, group.bgVariations[0]?.id ?? "", text),
         );
       }}
       className={cn(
@@ -108,7 +108,7 @@ export function DropOverlay() {
       </div>
       <div className="flex-1 flex">
         {zone("logo", "Logo", "Replaces the first group's artwork & colors", ImageIcon)}
-        {zone("bg", "Background", "Texture behind the first group's rows", Layers)}
+        {zone("bg", "Background", "Texture behind the first group's first row", Layers)}
       </div>
     </div>
   );

@@ -1,32 +1,21 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, FilePlus2, FolderOpen, Plus, Printer, Redo2, Undo2, X } from "lucide-react";
-import { actions, getState, rowsForGroup, useAppState, type Selection } from "./state/store";
+import { actions, findGroup, getState, useAppState, type Selection } from "./state/store";
 import { generateProofPdf } from "./pdf/proof";
 import { cn } from "./lib/cn";
 import { DropOverlay } from "./components/DropOverlay";
-import { GroupBand, groupAccent } from "./components/GroupBand";
+import { GroupMatrix } from "./components/GroupMatrix";
 import { Inspector } from "./components/Inspector";
-import { OriginCell } from "./components/OriginCell";
-import { PreviewCell } from "./components/PreviewCell";
 import { StatusBar } from "./components/StatusBar";
-import { VariationHeader } from "./components/VariationHeader";
-
-/** Matrix track sizes per zoom level (S / M / L). */
-const COL_MIN = [148, 184, 232];
-const ROW_MIN = [92, 120, 156];
 
 export default function App() {
   const projectName = useAppState((s) => s.projectName);
   const groups = useAppState((s) => s.groups);
   const logoScale = useAppState((s) => s.logoScale);
-  const logoVariations = useAppState((s) => s.logoVariations);
-  const bgVariations = useAppState((s) => s.bgVariations);
-  const overrides = useAppState((s) => s.overrides);
   const loadError = useAppState((s) => s.loadError);
   const selection = useAppState((s) => s.selection);
   const canUndo = useAppState((s) => s.canUndo);
   const canRedo = useAppState((s) => s.canRedo);
-  const zoom = useAppState((s) => s.zoom);
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
@@ -39,14 +28,7 @@ export default function App() {
     if (isExporting) return;
     setIsExporting(true);
     try {
-      const bytes = await generateProofPdf({
-        groups,
-        logoVariations,
-        bgVariations,
-        overrides,
-        projectName,
-        logoScale,
-      });
+      const bytes = await generateProofPdf({ groups, projectName, logoScale });
       const blob = new Blob([bytes], { type: "application/pdf" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
@@ -87,7 +69,7 @@ export default function App() {
   };
 
   // Keyboard: ⌘Z undo, ⇧⌘Z / ⌘Y redo, ⌘E export, Esc deselect,
-  // arrows walk the matrix, ⌫ clears an override / deletes a custom variation.
+  // arrows walk the current group's matrix, ⌫ clears an override / deletes a custom variation.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -129,18 +111,6 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-
-  const rowsOf = (groupId: string) => rowsForGroup(groups, bgVariations, groupId);
-
-  const gridTemplateColumns = `200px repeat(${logoVariations.length}, minmax(${COL_MIN[zoom]}px, 1fr)) 132px`;
-  const gridTemplateRows = [
-    "120px",
-    ...groups.flatMap((g) => [
-      "44px",
-      ...rowsOf(g.id).map(() => `minmax(${ROW_MIN[zoom]}px, 1fr)`),
-    ]),
-    "48px",
-  ].join(" ");
 
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden bg-[#F3F3F1] text-[#141414] font-sans antialiased">
@@ -228,75 +198,37 @@ export default function App() {
         </div>
       </header>
 
-      {/* Matrix + inspector */}
+      {/* Group matrices + inspector */}
       <div className="flex-1 flex min-h-0">
-        <main className="flex-1 p-3 lg:p-4 min-h-0 min-w-0 relative">
-          <div className="w-full h-full bg-white border border-neutral-200 rounded-xl shadow-sm overflow-auto relative custom-scrollbar">
-            <div
-              className="min-w-full min-h-full"
-              style={{ display: "grid", gridTemplateColumns, gridTemplateRows }}
+        <main className="flex-1 p-3 lg:p-4 min-h-0 min-w-0 relative overflow-auto custom-scrollbar">
+          <div className="flex flex-col gap-4">
+            {groups.map((group, gi) => (
+              <GroupMatrix
+                key={group.id}
+                group={group}
+                index={gi}
+                canDelete={groups.length > 1}
+              />
+            ))}
+
+            {/* Add a new group */}
+            <button
+              onClick={() => actions.addGroup()}
+              className="w-full h-12 flex items-center justify-center gap-2.5 bg-white border border-dashed border-neutral-300 rounded-xl hover:border-neutral-900 hover:bg-neutral-50 transition-colors group shadow-sm"
+              title="Add a new logo group with its own profiles, colors and rows"
             >
-              <OriginCell />
-
-              {/* Column headers: logo profiles */}
-              {logoVariations.map((v) => (
-                <VariationHeader
-                  key={v.id}
-                  variation={v}
-                  side="logo"
-                  className="border-r border-b border-neutral-200 bg-white sticky top-0 z-50"
-                />
-              ))}
-
-              {/* Add profile column */}
-              <div className="bg-neutral-50 border-b border-neutral-200 sticky top-0 z-50">
-                <AddButton label="Profile" onClick={() => actions.addVariation("logo")} />
+              <div className="w-7 h-7 shrink-0 bg-white border border-neutral-300 rounded-full flex items-center justify-center group-hover:border-neutral-900 group-hover:bg-neutral-900 group-hover:text-white transition-all">
+                <Plus className="w-3.5 h-3.5" />
               </div>
-
-              {/* Group sections: band + that group's rows */}
-              {groups.map((group, gi) => (
-                <Fragment key={group.id}>
-                  <GroupBand group={group} index={gi} canDelete={groups.length > 1} />
-                  {rowsOf(group.id).map((bgVar) => (
-                    <Fragment key={bgVar.id}>
-                      <VariationHeader
-                        variation={bgVar}
-                        side="bg"
-                        accent={groupAccent(gi)}
-                        className="border-r border-b border-neutral-200 bg-white sticky left-0 z-40"
-                      />
-                      {logoVariations.map((logoVar) => (
-                        <PreviewCell
-                          key={`${logoVar.id}-${bgVar.id}`}
-                          logoVar={logoVar}
-                          bgVar={bgVar}
-                          group={group}
-                          override={overrides[`${logoVar.id}-${bgVar.id}`]}
-                          logoScale={logoScale}
-                        />
-                      ))}
-                      <div className="border-b border-neutral-200 bg-neutral-50" />
-                    </Fragment>
-                  ))}
-                </Fragment>
-              ))}
-
-              {/* Bottom track: add a new section */}
-              <div className="bg-neutral-50" style={{ gridColumn: "1 / -1" }}>
-                <div className="sticky left-0 w-fit h-full">
-                  <AddButton
-                    label="Logo group"
-                    title="Add a new section with its own logo, colors and rows"
-                    onClick={() => actions.addGroup()}
-                  />
-                </div>
-              </div>
-            </div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 group-hover:text-black transition-colors">
+                Logo group
+              </span>
+            </button>
           </div>
 
           {/* First-run hint */}
           {groups.length === 1 && groups[0].logoIsDefault && (
-            <div className="absolute bottom-9 left-1/2 -translate-x-1/2 pointer-events-none z-[70]">
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none z-[70]">
               <div className="bg-neutral-900 text-white rounded-full px-4 py-2 text-[9px] font-bold uppercase tracking-[0.18em] shadow-lg">
                 Drop an SVG anywhere to load your logo
               </div>
@@ -314,23 +246,24 @@ export default function App() {
 }
 
 /**
- * Arrow-key navigation over the matrix: cells move in four directions and
- * flow into the column/row headers at the top/left edges. Returns true if
- * the key was handled.
+ * Arrow-key navigation within the selected group's matrix: cells move in four
+ * directions and flow into the column/row headers at the top/left edges.
+ * Returns true if the key was handled.
  */
 function navigateMatrix(e: KeyboardEvent): boolean {
   if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return false;
   const s = getState();
   const sel = s.selection;
   if (!sel) return false;
-  const cols = s.logoVariations;
-  // Display order: rows grouped by their logo group.
-  const rows = s.groups.flatMap((g) => rowsForGroup(s.groups, s.bgVariations, g.id));
+  const group = findGroup(s.groups, sel.groupId);
+  const cols = group.logoVariations;
+  const rows = group.bgVariations;
   const cell = (ci: number, ri: number) =>
-    actions.select({ kind: "cell", logoId: cols[ci].id, bgId: rows[ri].id });
+    actions.select({ kind: "cell", groupId: group.id, logoId: cols[ci].id, bgId: rows[ri].id });
   const colHead = (ci: number) =>
-    actions.select({ kind: "variation", side: "logo", id: cols[ci].id });
-  const rowHead = (ri: number) => actions.select({ kind: "variation", side: "bg", id: rows[ri].id });
+    actions.select({ kind: "variation", groupId: group.id, side: "logo", id: cols[ci].id });
+  const rowHead = (ri: number) =>
+    actions.select({ kind: "variation", groupId: group.id, side: "bg", id: rows[ri].id });
 
   e.preventDefault();
   if (sel.kind === "variation") {
@@ -365,48 +298,23 @@ function deleteSelection() {
   const s = getState();
   const sel = s.selection;
   if (!sel) return;
+  const group = findGroup(s.groups, sel.groupId);
   if (sel.kind === "cell") {
     const cellId = `${sel.logoId}-${sel.bgId}`;
-    if (s.overrides[cellId]) actions.setOverride(cellId, null);
+    if (group.overrides[cellId]) actions.setOverride(group.id, cellId, null);
     return;
   }
-  const list = sel.side === "logo" ? s.logoVariations : s.bgVariations;
+  const list = sel.side === "logo" ? group.logoVariations : group.bgVariations;
   const v = list.find((x) => x.id === sel.id);
-  if (v?.isCustom) actions.removeVariation(sel.side, sel.id);
+  if (v?.isCustom) actions.removeVariation(group.id, sel.side, sel.id);
 }
 
 /** Remounts the inspector when the selection target changes, resetting its local editor state. */
 function selectionKey(selection: Selection): string {
   if (!selection) return "none";
   return selection.kind === "variation"
-    ? `v-${selection.side}-${selection.id}`
-    : `c-${selection.logoId}-${selection.bgId}`;
-}
-
-/** "+" track button that adds a new white profile/surface immediately. */
-function AddButton({
-  label,
-  onClick,
-  title,
-}: {
-  label: string;
-  onClick: () => void;
-  title?: string;
-}) {
-  return (
-    <button
-      className="w-full h-full flex items-center justify-center gap-2.5 hover:bg-neutral-100 transition-colors cursor-pointer group px-3"
-      onClick={onClick}
-      title={title ?? `Add a ${label.toLowerCase()} (starts as paper white)`}
-    >
-      <div className="w-7 h-7 shrink-0 bg-white border border-neutral-300 rounded-full flex items-center justify-center group-hover:border-neutral-900 group-hover:bg-neutral-900 group-hover:text-white transition-all shadow-sm">
-        <Plus className="w-3.5 h-3.5" />
-      </div>
-      <span className="text-[8.5px] font-bold uppercase tracking-widest text-neutral-400 group-hover:text-black transition-colors whitespace-nowrap">
-        {label}
-      </span>
-    </button>
-  );
+    ? `v-${selection.groupId}-${selection.side}-${selection.id}`
+    : `c-${selection.groupId}-${selection.logoId}-${selection.bgId}`;
 }
 
 function ToolButton({

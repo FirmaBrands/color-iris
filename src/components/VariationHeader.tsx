@@ -1,22 +1,28 @@
 import { useEffect, useRef } from "react";
+import { Image as ImageIcon, X } from "lucide-react";
 import type { Variation } from "../types";
 import { cn } from "../lib/cn";
 import { coloringToCss } from "../color/simulate";
 import { exceedsTac } from "../lib/coloring";
 import { actions, useAppState } from "../state/store";
+import { UploadTarget } from "./UploadTarget";
 
 /**
- * Column (logo profile) or row (background surface) header of the matrix.
- * Clicking it selects the variation for editing in the Inspector panel.
+ * Column (logo profile) or row (background surface) header of a group's
+ * matrix. Clicking it selects the variation for editing in the Inspector.
+ * Surface rows also carry an inline background-image control next to the
+ * surface color.
  */
 export function VariationHeader({
   variation,
   side,
+  groupId,
   className,
   accent,
 }: {
   variation: Variation;
   side: "logo" | "bg";
+  groupId: string;
   className?: string;
   /** Row headers: the owning section's accent color (left edge). */
   accent?: string;
@@ -24,7 +30,10 @@ export function VariationHeader({
   const ref = useRef<HTMLDivElement | null>(null);
   const selection = useAppState((s) => s.selection);
   const isSelected =
-    selection?.kind === "variation" && selection.side === side && selection.id === variation.id;
+    selection?.kind === "variation" &&
+    selection.side === side &&
+    selection.groupId === groupId &&
+    selection.id === variation.id;
   const isOmitted = !variation.enabled;
   const swatchCss = coloringToCss(variation.coloring);
 
@@ -35,7 +44,7 @@ export function VariationHeader({
     }
   }, [isSelected]);
 
-  const select = () => actions.select({ kind: "variation", side, id: variation.id });
+  const select = () => actions.select({ kind: "variation", groupId, side, id: variation.id });
 
   return (
     <div
@@ -59,6 +68,7 @@ export function VariationHeader({
             onFocus={select}
             onChange={(e) =>
               actions.updateVariation(
+                groupId,
                 side,
                 { ...variation, name: e.target.value },
                 `vname-${variation.id}`,
@@ -92,22 +102,47 @@ export function VariationHeader({
           checked={variation.enabled}
           onClick={(e) => e.stopPropagation()}
           onChange={(e) =>
-            actions.updateVariation(side, { ...variation, enabled: e.target.checked })
+            actions.updateVariation(groupId, side, { ...variation, enabled: e.target.checked })
           }
           className="w-3.5 h-3.5 shrink-0 cursor-pointer accent-indigo-600"
           title={side === "logo" ? "Toggle column" : "Toggle row"}
         />
       </div>
 
-      {/* Swatch */}
-      <div className="w-full mt-2">
+      {/* Swatch + (rows only) background-image control */}
+      <div className="w-full mt-2 flex items-center gap-1.5">
         <div
           className={cn(
-            "block h-8 w-full rounded-md border shadow-sm transition-all",
+            "block h-8 flex-1 rounded-md border shadow-sm transition-all",
             isSelected ? "border-indigo-600" : "border-black/15 group-hover:border-neutral-500",
           )}
           style={{ background: swatchCss }}
         />
+        {side === "bg" && (
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <UploadTarget
+              onLoad={(svg) => actions.loadRowBgSvg(groupId, variation.id, svg)}
+              title="Background image behind this surface — click or drop an SVG"
+              className={cn(
+                "h-8 w-8 flex items-center justify-center border rounded-md cursor-pointer bg-white transition-colors shadow-sm",
+                variation.bgArtwork
+                  ? "border-neutral-500 text-neutral-800"
+                  : "border-neutral-300 text-neutral-400 hover:border-neutral-600",
+              )}
+            >
+              <ImageIcon size={13} />
+            </UploadTarget>
+            {variation.bgArtwork && (
+              <button
+                onClick={() => actions.clearRowBgArtwork(groupId, variation.id)}
+                className="h-8 w-6 flex items-center justify-center border border-neutral-300 rounded-md bg-white hover:border-black text-neutral-400 hover:text-black transition-colors"
+                title="Remove the background image"
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

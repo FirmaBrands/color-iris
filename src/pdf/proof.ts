@@ -1,14 +1,15 @@
 /**
  * A3 landscape, DeviceCMYK, fully vector proof sheet.
  *
- * The matrix is printed twice — once on the left half, once on the right —
+ * The proof is printed twice — once on the left half, once on the right —
  * with a separation line through the page center (compare side by side,
- * fold, or trim into two proofs). Every fill — including text — is
- * DeviceCMYK; gradients are native PDF shadings (see ./shading).
+ * fold, or trim into two proofs). Each half carries the project name and
+ * date. Every fill — including text — is DeviceCMYK; gradients are native
+ * PDF shadings (see ./shading).
  *
- * Layout per half: column headers (logo profiles), then one band per logo
- * group followed by that group's surface rows. Cells with a spec override
- * print their actual ink builds.
+ * Each logo group is an independent block: its own column headers (logo
+ * profiles, with their CMYK builds), then its surface rows. Backgrounds are
+ * per row. Cells with a spec override print their actual ink builds.
  */
 import { cmyk, PDFDocument, PDFName, PDFOperator, StandardFonts } from "pdf-lib";
 import type {
@@ -38,11 +39,12 @@ const PAGE_W = 1190.55; // A3 landscape
 const PAGE_H = 841.89;
 const MARGIN = 48;
 const TITLE_H = 46;
-const FOOTER_H = 20;
+const FOOTER_H = 8; // small bottom breathing room (no footer text)
 const CENTER_GAP = 24; // breathing room around the center line
 const HEADER_COL_W = 96;
-const HEADER_ROW_H = 74;
-const BAND_H = 16;
+const GROUP_LABEL_H = 15; // group name strip atop each block
+const GROUP_HEADER_H = 62; // column-header band per block
+const GROUP_GAP = 14; // gap between stacked group blocks
 
 const INK_BLACK = cmyk(0, 0, 0, 1);
 const INK_GRAY = cmyk(0, 0, 0, 0.55);
@@ -55,36 +57,30 @@ const toCmyk = (c: CMYK) => cmyk(c.c / 100, c.m / 100, c.y / 100, c.k / 100);
 
 export interface ProofInput {
   groups: LogoGroup[];
-  logoVariations: Variation[];
-  bgVariations: Variation[];
-  overrides: Record<string, CellOverride>;
   projectName: string;
   /** Logo footprint as a fraction of the cell (matches the screen preview). */
   logoScale: number;
 }
 
-interface GroupSection {
+/** One group reduced to its enabled columns and rows for printing. */
+interface Section {
   group: LogoGroup;
+  cols: Variation[];
   rows: Variation[];
 }
 
 export async function generateProofPdf(input: ProofInput): Promise<Uint8Array> {
-  const { groups, overrides, projectName } = input;
-  const cols = input.logoVariations.filter((v) => v.enabled);
+  const { groups, projectName } = input;
   const logoScale = Math.min(1, Math.max(0.2, input.logoScale || 0.64));
 
-  // Enabled rows, grouped in display order; empty groups are skipped.
-  const sections: GroupSection[] = groups
+  // Each group is its own block; skip groups with no enabled column or row.
+  const sections: Section[] = groups
     .map((group) => ({
       group,
-      rows: input.bgVariations.filter(
-        (v) =>
-          v.enabled &&
-          (groups.find((g) => g.id === v.groupId) ?? groups[0]).id === group.id,
-      ),
+      cols: group.logoVariations.filter((v) => v.enabled),
+      rows: group.bgVariations.filter((v) => v.enabled),
     }))
-    .filter((s) => s.rows.length > 0);
-  const nRows = sections.reduce((n, s) => n + s.rows.length, 0);
+    .filter((s) => s.cols.length > 0 && s.rows.length > 0);
 
   const pdfDoc = await PDFDocument.create();
   const name = projectName.trim() || "untitled";
@@ -108,7 +104,7 @@ export async function generateProofPdf(input: ProofInput): Promise<Uint8Array> {
     color: INK_GRAY,
   });
 
-  if (cols.length === 0 || nRows === 0) {
+  if (sections.length === 0) {
     page.drawText("NO ACTIVE PROFILES / SURFACES", {
       x: MARGIN,
       y: PAGE_H / 2,
@@ -119,29 +115,20 @@ export async function generateProofPdf(input: ProofInput): Promise<Uint8Array> {
     return pdfDoc.save();
   }
 
-  // The same sheet on both halves — each carries its own name + date so a
+  // The same proof on both halves — each carries its own name + date so a
   // trimmed half is a complete, labelled proof.
   const date = new Date().toISOString().slice(0, 16).replace("T", " ");
   const halfW = (PAGE_W - 2 * MARGIN - CENTER_GAP) / 2;
   const halves = [MARGIN, PAGE_W / 2 + CENTER_GAP / 2];
   for (const x0 of halves) {
-    drawSheet(pdfDoc, page, helv, helvBold, {
-      x0,
-      width: halfW,
-      cols,
-      sections,
-      overrides,
-      logoScale,
-      name,
-      date,
-    });
+    drawSheet(pdfDoc, page, helv, helvBold, { x0, width: halfW, sections, logoScale, name, date });
   }
 
   return pdfDoc.save();
 }
 
 // ---------------------------------------------------------------------------
-// One half-sheet
+// One half-sheet — a vertical stack of group blocks
 // ---------------------------------------------------------------------------
 
 function drawSheet(
@@ -152,119 +139,125 @@ function drawSheet(
   opts: {
     x0: number;
     width: number;
-    cols: Variation[];
-    sections: GroupSection[];
-    overrides: Record<string, CellOverride>;
+    sections: Section[];
     logoScale: number;
     name: string;
     date: string;
   },
 ) {
-  const { x0, width, cols, sections, overrides, logoScale, name, date } = opts;
-  const nRows = sections.reduce((n, s) => n + s.rows.length, 0);
+  const { x0, width, sections, logoScale, name, date } = opts;
 
-  // With more than one group, each band also prints that group's own ink
-  // builds per profile, so it needs a little more height.
-  const multiGroup = sections.length > 1;
-  const bandH = multiGroup ? 24 : BAND_H;
+  drawHalfTitle(page, helv, helvBold, name, date, x0, width);
 
   const gridTop = PAGE_H - MARGIN - TITLE_H;
   const gridBottom = MARGIN + FOOTER_H;
+
+  const totalRows = sections.reduce((n, s) => n + s.rows.length, 0);
+  const nG = sections.length;
+  const overhead = nG * (GROUP_LABEL_H + GROUP_HEADER_H) + (nG - 1) * GROUP_GAP;
+  const cellH = Math.max(20, (gridTop - gridBottom - overhead) / Math.max(1, totalRows));
+
+  let yTop = gridTop;
+  for (const section of sections) {
+    drawGroupBlock(pdfDoc, page, helv, helvBold, { x0, width, section, logoScale, yTop, cellH });
+    yTop -= GROUP_LABEL_H + GROUP_HEADER_H + section.rows.length * cellH + GROUP_GAP;
+  }
+}
+
+function drawGroupBlock(
+  pdfDoc: PDFDocument,
+  page: any,
+  helv: any,
+  helvBold: any,
+  o: {
+    x0: number;
+    width: number;
+    section: Section;
+    logoScale: number;
+    yTop: number;
+    cellH: number;
+  },
+) {
+  const { x0, width, section, logoScale, yTop, cellH } = o;
+  const { group, cols, rows } = section;
   const gridLeft = x0 + HEADER_COL_W;
   const gridRight = x0 + width;
-  const cellTop = gridTop - HEADER_ROW_H;
   const cellW = (gridRight - gridLeft) / cols.length;
-  const cellH = (cellTop - gridBottom - sections.length * bandH) / nRows;
+  const overrides = group.overrides;
 
-  // Per-half title: project name + generation date.
-  drawHalfTitle(page, helv, helvBold, name, date, x0, width);
+  // Group label strip across the block.
+  const labelBottom = yTop - GROUP_LABEL_H;
+  page.drawRectangle({
+    x: x0, y: labelBottom, width: gridRight - x0, height: GROUP_LABEL_H, color: INK_BAND,
+  });
+  let label = group.name.toUpperCase();
+  while (label.length > 1 && helvBold.widthOfTextAtSize(label, 7) > width - 12) {
+    label = label.slice(0, -1);
+  }
+  page.drawText(label, {
+    x: x0 + 5, y: labelBottom + (GROUP_LABEL_H - 7) / 2 + 0.5, size: 7, font: helvBold, color: INK_BLACK,
+  });
 
-  // Column headers.
+  // Column headers: this group's logo profiles (name + swatches + CMYK builds).
+  const headerTop = labelBottom;
   cols.forEach((col, ci) => {
     drawHeader(page, helv, helvBold, col, {
       x: gridLeft + ci * cellW + 5,
-      yTop: gridTop - 11,
+      yTop: headerTop - 11,
       maxW: cellW - 10,
     });
   });
 
-  // Group sections.
+  const cellTop = headerTop - GROUP_HEADER_H;
+
   let yCursor = cellTop;
-  for (const { group, rows } of sections) {
-    // Band: group name across the half (header column included).
-    const bandY = yCursor - bandH;
-    page.drawRectangle({
-      x: x0, y: bandY, width: gridRight - x0, height: bandH,
-      color: INK_BAND,
+  for (const row of rows) {
+    const y = yCursor - cellH;
+
+    drawHeader(page, helv, helvBold, row, {
+      x: x0 + 2,
+      yTop: yCursor - 11,
+      maxW: HEADER_COL_W - 8,
     });
-    const nameMaxW = multiGroup ? HEADER_COL_W - 8 : width - 12;
-    let bandLabel = group.name.toUpperCase();
-    while (bandLabel.length > 4 && helvBold.widthOfTextAtSize(bandLabel, 6.5) > nameMaxW) {
-      bandLabel = bandLabel.slice(0, -1);
-    }
-    const labelY = bandY + (bandH - 6.5) / 2 + 0.5;
-    page.drawText(bandLabel, {
-      x: x0 + 5, y: labelY, size: 6.5, font: helvBold, color: INK_BLACK,
-    });
-    // Per-group ink builds: each profile's actual CMYK for this group's logo.
-    if (multiGroup) {
-      cols.forEach((col, ci) => {
-        drawGroupBuild(
-          page, helv, group, col,
-          gridLeft + ci * cellW + 4, labelY, cellW - 8,
+
+    cols.forEach((col, ci) => {
+      const x = gridLeft + ci * cellW;
+      const override = overrides[`${col.id}-${row.id}`];
+
+      if (override?.disabled) {
+        drawOmittedCell(page, helv, x, y, cellW, cellH);
+      } else {
+        const bgColoring = effectiveColoring(row, override, "bg");
+        const logoColoring = override?.logo ?? logoColoringForGroup(col, group);
+        drawCellBackground(pdfDoc, page, row.bgArtwork ?? null, bgColoring, x, y, cellW, cellH);
+        drawArtworkInRect(
+          pdfDoc, page, group.logoArtwork, logoColoring,
+          x + (cellW * (1 - logoScale)) / 2,
+          y + (cellH * (1 - logoScale)) / 2,
+          cellW * logoScale,
+          cellH * logoScale,
+          "contain",
         );
-      });
-    }
-    yCursor = bandY;
-
-    for (const row of rows) {
-      const y = yCursor - cellH;
-
-      drawHeader(page, helv, helvBold, row, {
-        x: x0 + 2,
-        yTop: yCursor - 11,
-        maxW: HEADER_COL_W - 8,
-      });
-
-      cols.forEach((col, ci) => {
-        const x = gridLeft + ci * cellW;
-        const override = overrides[`${col.id}-${row.id}`];
-
-        if (override?.disabled) {
-          drawOmittedCell(page, helv, x, y, cellW, cellH);
-        } else {
-          const bgColoring = effectiveColoring(row, override, "bg");
-          const logoColoring = override?.logo ?? logoColoringForGroup(col, group);
-          drawCellBackground(pdfDoc, page, group.bgArtwork, bgColoring, x, y, cellW, cellH);
-          drawArtworkInRect(
-            pdfDoc, page, group.logoArtwork, logoColoring,
-            x + (cellW * (1 - logoScale)) / 2,
-            y + (cellH * (1 - logoScale)) / 2,
-            cellW * logoScale,
-            cellH * logoScale,
-            "contain",
-          );
-          // Adjusted cells carry their actual ink builds on the sheet.
-          if (override && (override.logo || override.bg)) {
-            drawOverrideInfo(page, helv, helvBold, override, x, y, cellW);
-          }
+        // Adjusted cells carry their actual ink builds on the sheet.
+        if (override && (override.logo || override.bg)) {
+          drawOverrideInfo(page, helv, helvBold, override, x, y, cellW);
         }
+      }
 
-        // hairline cell border
-        page.drawRectangle({
-          x, y, width: cellW, height: cellH,
-          borderColor: INK_LIGHT, borderWidth: 0.5,
-        });
+      // hairline cell border
+      page.drawRectangle({
+        x, y, width: cellW, height: cellH,
+        borderColor: INK_LIGHT, borderWidth: 0.5,
       });
+    });
 
-      yCursor = y;
-    }
+    yCursor = y;
   }
 
   // Outer grid frame.
   page.drawRectangle({
-    x: gridLeft, y: gridBottom,
-    width: gridRight - gridLeft, height: cellTop - gridBottom,
+    x: gridLeft, y: yCursor,
+    width: gridRight - gridLeft, height: cellTop - yCursor,
     borderColor: INK_GRAY, borderWidth: 1,
   });
 }
@@ -602,37 +595,6 @@ function drawHalfTitle(
   page.drawText(`GENERATED ${date} UTC`, {
     x: x0, y: yTitle - 13, size: 7, font: helv, color: INK_GRAY,
   });
-}
-
-/** One profile's actual ink builds for a given group's logo, drawn in its band. */
-function drawGroupBuild(
-  page: any, helv: any,
-  group: LogoGroup, col: Variation,
-  x: number, y: number, maxW: number,
-) {
-  const colors = coloringColors(logoColoringForGroup(col, group));
-  const limit = x + maxW;
-  let cx = x;
-  for (let i = 0; i < colors.length; i++) {
-    const c = colors[i];
-    if (cx + 6 > limit) {
-      page.drawText("…", { x: cx, y, size: 5, font: helv, color: INK_GRAY });
-      return;
-    }
-    page.drawRectangle({
-      x: cx, y: y - 0.5, width: 4.5, height: 4.5,
-      color: toCmyk(c), borderColor: INK_LIGHT, borderWidth: 0.3,
-    });
-    cx += 6;
-    const build = formatCmyk(c);
-    const bw = helv.widthOfTextAtSize(build, 5);
-    if (cx + bw > limit) {
-      page.drawText(`+${colors.length - i}`, { x: cx, y, size: 5, font: helv, color: INK_GRAY });
-      return;
-    }
-    page.drawText(build, { x: cx, y, size: 5, font: helv, color: INK_GRAY });
-    cx += bw + 6;
-  }
 }
 
 function drawCropMarks(page: any) {

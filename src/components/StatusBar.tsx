@@ -22,25 +22,36 @@ const SHORTCUTS: Array<[string, string]> = [
 /** Bottom status bar: sheet stats, autosave state and the cell-density zoom. */
 export function StatusBar() {
   const [showKeys, setShowKeys] = useState(false);
-  const logoVariations = useAppState((s) => s.logoVariations);
-  const bgVariations = useAppState((s) => s.bgVariations);
-  const overrides = useAppState((s) => s.overrides);
+  const groups = useAppState((s) => s.groups);
   const zoom = useAppState((s) => s.zoom);
   const savedAt = useAppState((s) => s.savedAt);
 
   const logoScale = useAppState((s) => s.logoScale);
-  const cols = logoVariations.filter((v) => v.enabled).length;
-  const rows = bgVariations.filter((v) => v.enabled).length;
-  const overrideCount = Object.keys(overrides).length;
-  const tacWarnings =
-    logoVariations.filter((v) => exceedsTac(v.coloring)).length +
-    bgVariations.filter((v) => exceedsTac(v.coloring)).length;
+  const cells = groups.reduce(
+    (n, g) =>
+      n +
+      g.logoVariations.filter((v) => v.enabled).length *
+        g.bgVariations.filter((v) => v.enabled).length,
+    0,
+  );
+  const overrideCount = groups.reduce((n, g) => n + Object.keys(g.overrides).length, 0);
+  const tacWarnings = groups.reduce(
+    (n, g) =>
+      n +
+      g.logoVariations.filter((v) => exceedsTac(v.coloring)).length +
+      g.bgVariations.filter((v) => exceedsTac(v.coloring)).length,
+    0,
+  );
 
   return (
     <footer className="h-8 shrink-0 border-t border-neutral-200 bg-white flex items-center justify-between px-4 select-none">
       <div className="flex items-center gap-3 text-[8.5px] font-mono font-bold uppercase tracking-widest text-neutral-400 min-w-0">
-        <span title="Active profiles × surfaces on the sheet">
-          {cols} × {rows} <span className="hidden sm:inline">on sheet</span>
+        <span title="Logo groups on the sheet">
+          {groups.length} {groups.length === 1 ? "group" : "groups"}
+        </span>
+        <span className="h-3 w-px bg-neutral-200" />
+        <span title="Active profile × surface cells across all groups">
+          {cells} <span className="hidden sm:inline">cells on sheet</span>
         </span>
         <span className="h-3 w-px bg-neutral-200" />
         <span title="Cells deviating from their row/column spec">

@@ -44,14 +44,14 @@ export interface Variation {
   isCustom: boolean;
   /** Which separation algorithm produced an auto variation. */
   algorithmIndex?: number;
-  /** Which logo group the row/column belongs to. */
-  groupId?: string;
+  /** Surface rows only: an optional background texture behind this row. */
+  bgArtwork?: Artwork | null;
 }
 
 /**
- * A horizontal section of the matrix: one logo (plus its editable source
- * colors and optional background texture) shared by the surface rows
- * assigned to it.
+ * A self-contained block of the proof: its own logo (plus editable source
+ * colors), its own set of logo profiles (columns) and surface rows (rows),
+ * and its own per-cell overrides. Each group is an independent mini-matrix.
  */
 export interface LogoGroup {
   id: string;
@@ -59,9 +59,14 @@ export interface LogoGroup {
   logoArtwork: Artwork;
   /** True while the group still shows the placeholder artwork. */
   logoIsDefault: boolean;
-  bgArtwork: Artwork | null;
   /** Editable master colors, one per logo palette slot. */
   masterHexes: string[];
+  /** This group's logo profiles (matrix columns). */
+  logoVariations: Variation[];
+  /** This group's surface rows (matrix rows). */
+  bgVariations: Variation[];
+  /** Per-cell deviations, keyed `${logoId}-${bgId}` within this group. */
+  overrides: Record<string, CellOverride>;
 }
 
 /** Per-cell deviation from the row/column defaults. */

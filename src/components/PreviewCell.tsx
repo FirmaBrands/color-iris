@@ -32,6 +32,7 @@ export function PreviewCell({
   const selection = useAppState((s) => s.selection);
   const isSelected =
     selection?.kind === "cell" &&
+    selection.groupId === group.id &&
     selection.logoId === logoVar.id &&
     selection.bgId === bgVar.id;
 
@@ -45,6 +46,7 @@ export function PreviewCell({
 
   const logoColoring = override?.logo ?? logoColoringForGroup(logoVar, group);
   const bgColoring = effectiveColoring(bgVar, override, "bg");
+  const bgArtwork = bgVar.bgArtwork ?? null;
 
   const isExcluded = !!override?.disabled;
   const isRowColOmitted = !logoVar.enabled || !bgVar.enabled;
@@ -57,17 +59,19 @@ export function PreviewCell({
   );
   const bgSvg = useMemo(
     () =>
-      group.bgArtwork
+      bgArtwork
         ? // Stretched (non-uniform) to the cell, matching the printed sheet.
-          renderArtworkSvg(group.bgArtwork, bgColoring, { preserveAspectRatio: "none" })
+          renderArtworkSvg(bgArtwork, bgColoring, { preserveAspectRatio: "none" })
         : null,
-    [group.bgArtwork, bgColoring],
+    [bgArtwork, bgColoring],
   );
 
   return (
     <div
       ref={ref}
-      onClick={() => actions.select({ kind: "cell", logoId: logoVar.id, bgId: bgVar.id })}
+      onClick={() =>
+        actions.select({ kind: "cell", groupId: group.id, logoId: logoVar.id, bgId: bgVar.id })
+      }
       className={cn(
         "border-r border-b border-neutral-200 flex flex-col justify-center relative group/cell w-full h-full items-center overflow-hidden transition-shadow duration-150 cursor-pointer scroll-mt-[120px] scroll-ml-[200px]",
         isOmitted && "bg-neutral-50",
@@ -116,6 +120,7 @@ export function PreviewCell({
           onClick={(e) => {
             e.stopPropagation();
             actions.setOverride(
+              group.id,
               cellId,
               isExcluded
                 ? override?.logo || override?.bg

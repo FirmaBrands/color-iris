@@ -10,11 +10,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { Coloring, Variation } from "../types";
+import type { Coloring, LogoGroup, Variation } from "../types";
 import { cn } from "../lib/cn";
 import { coloringToCss } from "../color/simulate";
 import { effectiveColoring, logoColoringForGroup } from "../lib/coloring";
-import { actions, getClipboardColoring, groupForRow, useAppState } from "../state/store";
+import { actions, getClipboardColoring, useAppState } from "../state/store";
 import { renderArtworkSvg } from "../svg/render";
 import { PaintEditor } from "./PaintEditor";
 
@@ -25,31 +25,31 @@ import { PaintEditor } from "./PaintEditor";
  */
 export function Inspector() {
   const selection = useAppState((s) => s.selection);
-  const logoVariations = useAppState((s) => s.logoVariations);
-  const bgVariations = useAppState((s) => s.bgVariations);
   const groups = useAppState((s) => s.groups);
 
   if (!selection) return null;
+  const group = groups.find((g) => g.id === selection.groupId);
+  if (!group) return null;
 
   let body: React.ReactNode = null;
   let title = "";
   let subtitle = "";
 
   if (selection.kind === "variation") {
-    const list = selection.side === "logo" ? logoVariations : bgVariations;
+    const list = selection.side === "logo" ? group.logoVariations : group.bgVariations;
     const variation = list.find((v) => v.id === selection.id);
     if (!variation) return null;
     title = selection.side === "logo" ? "Logo Profile" : "Surface";
-    subtitle = selection.side === "logo" ? "Column" : "Row";
-    body = <VariationPanel side={selection.side} variation={variation} />;
+    subtitle = groups.length > 1 ? group.name : selection.side === "logo" ? "Column" : "Row";
+    body = <VariationPanel group={group} side={selection.side} variation={variation} />;
   } else {
-    const logoVar = logoVariations.find((v) => v.id === selection.logoId);
-    const bgVar = bgVariations.find((v) => v.id === selection.bgId);
+    const logoVar = group.logoVariations.find((v) => v.id === selection.logoId);
+    const bgVar = group.bgVariations.find((v) => v.id === selection.bgId);
     if (!logoVar || !bgVar) return null;
     title = "Cell";
     subtitle = `${logoVar.name} × ${bgVar.name}`;
-    if (groups.length > 1) subtitle += ` · ${groupForRow(groups, bgVar).name}`;
-    body = <CellPanel logoVar={logoVar} bgVar={bgVar} />;
+    if (groups.length > 1) subtitle += ` · ${group.name}`;
+    body = <CellPanel group={group} logoVar={logoVar} bgVar={bgVar} />;
   }
 
   return (
@@ -80,11 +80,18 @@ export function Inspector() {
 // Variation (column/row) panel
 // ---------------------------------------------------------------------------
 
-function VariationPanel({ side, variation }: { side: "logo" | "bg"; variation: Variation }) {
+function VariationPanel({
+  group,
+  side,
+  variation,
+}: {
+  group: LogoGroup;
+  side: "logo" | "bg";
+  variation: Variation;
+}) {
   const hasClipboard = useAppState((s) => s.hasClipboard);
-  const groups = useAppState((s) => s.groups);
   const update = (patch: Partial<Variation>, coalesceKey?: string) =>
-    actions.updateVariation(side, { ...variation, ...patch }, coalesceKey);
+    actions.updateVariation(group.id, side, { ...variation, ...patch }, coalesceKey);
 
   return (
     <>
@@ -101,28 +108,9 @@ function VariationPanel({ side, variation }: { side: "logo" | "bg"; variation: V
         />
         {!variation.isCustom && (
           <p className="text-[8.5px] font-mono text-neutral-400 leading-relaxed uppercase tracking-wide">
-            Auto — recalculated per group when the source colors change. Duplicate it to
-            make a user-owned copy.
+            Auto — recalculated from this group's source colors. Duplicate it to make a
+            user-owned copy.
           </p>
-        )}
-        {side === "bg" && groups.length > 1 && (
-          <label className="flex items-center gap-2 mt-0.5">
-            <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest text-neutral-400 shrink-0">
-              Group
-            </span>
-            <select
-              value={groupForRow(groups, variation).id}
-              onChange={(e) => actions.setRowGroup(variation.id, e.target.value)}
-              className="flex-1 h-7 border border-neutral-200 rounded-md bg-white text-[10px] font-bold uppercase tracking-wide px-1.5 outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-              title="Which logo group this row belongs to"
-            >
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-          </label>
         )}
       </div>
 
@@ -139,7 +127,7 @@ function VariationPanel({ side, variation }: { side: "logo" | "bg"; variation: V
           </span>
         </button>
         <button
-          onClick={() => actions.duplicateVariation(side, variation.id)}
+          onClick={() => actions.duplicateVariation(group.id, side, variation.id)}
           className="h-8 px-2.5 border border-neutral-200 rounded-lg hover:border-neutral-400 hover:bg-neutral-50 text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
           title="Duplicate"
         >
@@ -148,7 +136,7 @@ function VariationPanel({ side, variation }: { side: "logo" | "bg"; variation: V
         </button>
         {variation.isCustom && (
           <button
-            onClick={() => actions.removeVariation(side, variation.id)}
+            onClick={() => actions.removeVariation(group.id, side, variation.id)}
             className="h-8 px-2.5 border border-neutral-200 rounded-lg hover:border-[#C75000] hover:bg-orange-50 text-neutral-500 hover:text-[#C75000] flex items-center transition-colors"
             title="Delete (⌫)"
           >
@@ -262,11 +250,17 @@ function BuildClipboard({
 // Cell panel
 // ---------------------------------------------------------------------------
 
-function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation }) {
-  const groups = useAppState((s) => s.groups);
-  const overrides = useAppState((s) => s.overrides);
+function CellPanel({
+  group,
+  logoVar,
+  bgVar,
+}: {
+  group: LogoGroup;
+  logoVar: Variation;
+  bgVar: Variation;
+}) {
+  const overrides = group.overrides;
   const hasClipboard = useAppState((s) => s.hasClipboard);
-  const group = groupForRow(groups, bgVar);
 
   const cellId = `${logoVar.id}-${bgVar.id}`;
   const override = overrides[cellId];
@@ -275,6 +269,7 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
 
   const logoColoring = override?.logo ?? logoColoringForGroup(logoVar, group);
   const bgColoring = effectiveColoring(bgVar, override, "bg");
+  const bgArtwork = bgVar.bgArtwork ?? null;
 
   const logoSvg = useMemo(
     () => renderArtworkSvg(group.logoArtwork, logoColoring),
@@ -282,11 +277,11 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
   );
   const bgSvg = useMemo(
     () =>
-      group.bgArtwork
+      bgArtwork
         ? // Stretched (non-uniform) to the preview, matching the printed sheet.
-          renderArtworkSvg(group.bgArtwork, bgColoring, { preserveAspectRatio: "none" })
+          renderArtworkSvg(bgArtwork, bgColoring, { preserveAspectRatio: "none" })
         : null,
-    [group.bgArtwork, bgColoring],
+    [bgArtwork, bgColoring],
   );
 
   return (
@@ -319,6 +314,7 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
         <button
           onClick={() =>
             actions.setOverride(
+              group.id,
               cellId,
               isExcluded
                 ? override?.logo || override?.bg
@@ -342,7 +338,9 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
         </button>
         {hasSpecChange && (
           <button
-            onClick={() => actions.setOverride(cellId, isExcluded ? { disabled: true } : null)}
+            onClick={() =>
+              actions.setOverride(group.id, cellId, isExcluded ? { disabled: true } : null)
+            }
             className="h-8 px-2.5 border border-neutral-200 rounded-md bg-white hover:border-neutral-400 hover:bg-neutral-50 text-neutral-500 hover:text-black flex items-center gap-1.5 transition-colors"
             title="Discard the per-cell colors and follow the row/column spec"
           >
@@ -371,7 +369,7 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
             coloring={logoColoring}
             hasClipboard={hasClipboard}
             onPaste={(coloring) =>
-              actions.setOverride(cellId, { ...override, logo: coloring, disabled: false })
+              actions.setOverride(group.id, cellId, { ...override, logo: coloring, disabled: false })
             }
             compact
             className="shrink-0 [&>button]:flex-none [&>button]:h-6"
@@ -381,6 +379,7 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
           coloring={logoColoring}
           onChange={(coloring) =>
             actions.setOverride(
+              group.id,
               cellId,
               { ...override, logo: coloring, disabled: false },
               `ov-logo-${cellId}`,
@@ -398,7 +397,7 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
             coloring={bgColoring}
             hasClipboard={hasClipboard}
             onPaste={(coloring) =>
-              actions.setOverride(cellId, { ...override, bg: coloring, disabled: false })
+              actions.setOverride(group.id, cellId, { ...override, bg: coloring, disabled: false })
             }
             compact
             className="shrink-0 [&>button]:flex-none [&>button]:h-6"
@@ -408,6 +407,7 @@ function CellPanel({ logoVar, bgVar }: { logoVar: Variation; bgVar: Variation })
           coloring={bgColoring}
           onChange={(coloring) =>
             actions.setOverride(
+              group.id,
               cellId,
               { ...override, bg: coloring, disabled: false },
               `ov-bg-${cellId}`,
