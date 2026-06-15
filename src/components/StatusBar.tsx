@@ -50,7 +50,7 @@ export function StatusBar() {
           {groups.length} {groups.length === 1 ? "group" : "groups"}
         </span>
         <span className="h-3 w-px bg-neutral-200" />
-        <span title="Active profile × surface cells across all groups">
+        <span title="Active logo × background cells across all groups">
           {cells} <span className="hidden sm:inline">cells on sheet</span>
         </span>
         <span className="h-3 w-px bg-neutral-200" />

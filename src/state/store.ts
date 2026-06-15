@@ -621,7 +621,7 @@ export const actions = {
     if (side === "logo") {
       const v: Variation = {
         id: uid("logo-custom"),
-        name: "New Profile",
+        name: "New Logo",
         coloring: {
           slots: group.masterHexes.map(() => ({ ...PAPER_WHITE })),
           wash: null,
@@ -637,7 +637,7 @@ export const actions = {
     }
     const v: Variation = {
       id: uid("bg-custom"),
-      name: "New Surface",
+      name: "New Background",
       coloring: solidColoring({ ...PAPER_WHITE }),
       enabled: true,
       isCustom: true,

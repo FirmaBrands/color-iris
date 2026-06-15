@@ -108,7 +108,7 @@ export function DropOverlay() {
       </div>
       <div className="flex-1 flex">
         {zone("logo", "Logo", "Replaces the first group's artwork & colors", ImageIcon)}
-        {zone("bg", "Background", "Texture behind the first group's first row", Layers)}
+        {zone("bg", "Background", "Background for the first group's first row", Layers)}
       </div>
     </div>
   );

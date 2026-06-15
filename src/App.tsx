@@ -215,7 +215,7 @@ export default function App() {
             <button
               onClick={() => actions.addGroup()}
               className="w-full h-12 flex items-center justify-center gap-2.5 bg-white border border-dashed border-neutral-300 rounded-xl hover:border-neutral-900 hover:bg-neutral-50 transition-colors group shadow-sm"
-              title="Add a new logo group with its own profiles, colors and rows"
+              title="Add a new logo group with its own logos, colors and backgrounds"
             >
               <div className="w-7 h-7 shrink-0 bg-white border border-neutral-300 rounded-full flex items-center justify-center group-hover:border-neutral-900 group-hover:bg-neutral-900 group-hover:text-white transition-all">
                 <Plus className="w-3.5 h-3.5" />

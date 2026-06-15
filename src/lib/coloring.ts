@@ -1,6 +1,16 @@
 /** Shared helpers for resolving colorings, refs and ink coverage. */
-import type { CellOverride, CMYK, ColorRef, Coloring, LogoGroup, Paint, Variation } from "../types";
-import { hexToRgb, separate, SEPARATION_ALGORITHMS, tac, TAC_LIMIT } from "../color/convert";
+import type { Artwork, CellOverride, CMYK, ColorRef, Coloring, LogoGroup, Paint, Variation } from "../types";
+import { hexToRgb, rgbToCmyk, separate, SEPARATION_ALGORITHMS, tac, TAC_LIMIT } from "../color/convert";
+
+/**
+ * A coloring that paints an artwork in its OWN palette colors (each slot =
+ * the artwork's extracted color, converted to CMYK). Used for uploaded
+ * background images so they show as the image, independent of the surface
+ * row's ink.
+ */
+export function artworkOwnColoring(artwork: Artwork): Coloring {
+  return { slots: artwork.palette.map((hex) => rgbToCmyk(hexToRgb(hex))), wash: null };
+}
 
 /**
  * The logo coloring a profile produces for one group. Auto profiles

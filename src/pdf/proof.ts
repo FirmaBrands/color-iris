@@ -26,6 +26,7 @@ import { DEFAULT_WASH_ANGLE } from "../types";
 import { linearEndpoints } from "../svg/render";
 import { tac, TAC_LIMIT } from "../color/convert";
 import {
+  artworkOwnColoring,
   coloringColors,
   effectiveColoring,
   formatCmyk,
@@ -435,23 +436,37 @@ function drawCellBackground(
   w: number,
   h: number,
 ) {
-  const ctx = (pdfDoc as any).context;
-  const stream = page.getContentStream();
-  const wash = coloring.wash;
+  // Surface base first (solid / gradient / stripes)…
+  paintSurface(pdfDoc, page, coloring, x, y, w, h);
 
+  // …then the uploaded background image on top, in its own colors.
   if (bgArtwork) {
-    // Paper base under the artwork, then the artwork stretched to the cell
-    // (non-uniform) so the whole background is visible.
+    const ctx = (pdfDoc as any).context;
+    const stream = page.getContentStream();
     stream.push(PDFOperator.of("q" as any, []));
     stream.push(
       PDFOperator.of("re" as any, [ctx.obj(x), ctx.obj(y), ctx.obj(w), ctx.obj(h)]),
     );
     stream.push(PDFOperator.of("W" as any, []));
     stream.push(PDFOperator.of("n" as any, []));
-    drawArtworkInRect(pdfDoc, page, bgArtwork, coloring, x, y, w, h, "stretch");
+    drawArtworkInRect(pdfDoc, page, bgArtwork, artworkOwnColoring(bgArtwork), x, y, w, h, "stretch");
     stream.push(PDFOperator.of("Q" as any, []));
-    return;
   }
+}
+
+/** Paints the surface row's own ink (solid, gradient, or side-by-side stripes). */
+function paintSurface(
+  pdfDoc: PDFDocument,
+  page: any,
+  coloring: Coloring,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const ctx = (pdfDoc as any).context;
+  const stream = page.getContentStream();
+  const wash = coloring.wash;
 
   if (wash && wash.kind !== "solid") {
     // Gradient surface: clip to cell, translate, paint shading.

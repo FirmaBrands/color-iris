@@ -3,7 +3,12 @@ import { Eye, EyeOff } from "lucide-react";
 import type { CellOverride, LogoGroup, Variation } from "../types";
 import { cn } from "../lib/cn";
 import { coloringToCss } from "../color/simulate";
-import { describeColoring, effectiveColoring, logoColoringForGroup } from "../lib/coloring";
+import {
+  artworkOwnColoring,
+  describeColoring,
+  effectiveColoring,
+  logoColoringForGroup,
+} from "../lib/coloring";
 import { actions, useAppState } from "../state/store";
 import { renderArtworkSvg } from "../svg/render";
 
@@ -60,10 +65,12 @@ export function PreviewCell({
   const bgSvg = useMemo(
     () =>
       bgArtwork
-        ? // Stretched (non-uniform) to the cell, matching the printed sheet.
-          renderArtworkSvg(bgArtwork, bgColoring, { preserveAspectRatio: "none" })
+        ? // Painted in its own colors, stretched to the cell (matches the PDF).
+          renderArtworkSvg(bgArtwork, artworkOwnColoring(bgArtwork), {
+            preserveAspectRatio: "none",
+          })
         : null,
-    [bgArtwork, bgColoring],
+    [bgArtwork],
   );
 
   return (

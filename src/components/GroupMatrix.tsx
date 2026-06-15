@@ -49,13 +49,13 @@ export function GroupMatrix({
           <div className="bg-neutral-50 border-r border-b border-neutral-200 sticky left-0 z-40 select-none flex flex-col items-start justify-between p-3">
             <div className="flex items-center gap-1 text-neutral-400">
               <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest">
-                Profiles
+                Logos
               </span>
               <ArrowRight size={9} />
             </div>
             <div className="flex items-center gap-1 text-neutral-400">
               <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest">
-                Surfaces
+                Backgrounds
               </span>
               <ArrowDown size={9} />
             </div>
@@ -72,9 +72,9 @@ export function GroupMatrix({
             />
           ))}
 
-          {/* Add profile column */}
+          {/* Add logo column */}
           <div className="bg-neutral-50 border-b border-neutral-200">
-            <AddButton label="Profile" onClick={() => actions.addVariation(group.id, "logo")} />
+            <AddButton label="Logo" onClick={() => actions.addVariation(group.id, "logo")} />
           </div>
 
           {/* Surface rows */}
@@ -104,8 +104,8 @@ export function GroupMatrix({
           {/* Add-row button lives in the row (left) column */}
           <div className="bg-neutral-50 border-r border-neutral-200 sticky left-0 z-30">
             <AddButton
-              label="Row"
-              title="Add a surface row to this section (starts as paper white)"
+              label="Background"
+              title="Add a background to this group (starts as paper white)"
               onClick={() => actions.addVariation(group.id, "bg")}
             />
           </div>

@@ -105,7 +105,7 @@ export function VariationHeader({
             actions.updateVariation(groupId, side, { ...variation, enabled: e.target.checked })
           }
           className="w-3.5 h-3.5 shrink-0 cursor-pointer accent-indigo-600"
-          title={side === "logo" ? "Toggle column" : "Toggle row"}
+          title={side === "logo" ? "Toggle logo" : "Toggle background"}
         />
       </div>
 
@@ -122,7 +122,7 @@ export function VariationHeader({
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             <UploadTarget
               onLoad={(svg) => actions.loadRowBgSvg(groupId, variation.id, svg)}
-              title="Background image behind this surface — click or drop an SVG"
+              title="Background image — click or drop an SVG"
               className={cn(
                 "h-8 w-8 flex items-center justify-center border rounded-md cursor-pointer bg-white transition-colors shadow-sm",
                 variation.bgArtwork

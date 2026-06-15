@@ -13,7 +13,7 @@ import {
 import type { Coloring, LogoGroup, Variation } from "../types";
 import { cn } from "../lib/cn";
 import { coloringToCss } from "../color/simulate";
-import { effectiveColoring, logoColoringForGroup } from "../lib/coloring";
+import { artworkOwnColoring, effectiveColoring, logoColoringForGroup } from "../lib/coloring";
 import { actions, getClipboardColoring, useAppState } from "../state/store";
 import { renderArtworkSvg } from "../svg/render";
 import { PaintEditor } from "./PaintEditor";
@@ -39,7 +39,7 @@ export function Inspector() {
     const list = selection.side === "logo" ? group.logoVariations : group.bgVariations;
     const variation = list.find((v) => v.id === selection.id);
     if (!variation) return null;
-    title = selection.side === "logo" ? "Logo Profile" : "Surface";
+    title = selection.side === "logo" ? "Logo" : "Background";
     subtitle = groups.length > 1 ? group.name : selection.side === "logo" ? "Column" : "Row";
     body = <VariationPanel group={group} side={selection.side} variation={variation} />;
   } else {
@@ -114,16 +114,20 @@ function VariationPanel({
         )}
       </div>
 
-      {/* On sheet toggle + duplicate / delete */}
+      {/* Export-to-PDF toggle + duplicate / delete */}
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => update({ enabled: !variation.enabled })}
           className="flex items-center gap-2 border border-neutral-200 rounded-lg px-2.5 h-8 hover:border-neutral-400 transition-colors flex-1 bg-white"
-          title={side === "logo" ? "Include this column on the sheet" : "Include this row on the sheet"}
+          title={
+            side === "logo"
+              ? "Include this logo in the exported PDF"
+              : "Include this background in the exported PDF"
+          }
         >
           <Switch on={variation.enabled} />
           <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-600">
-            On sheet
+            Export to PDF
           </span>
         </button>
         <button
@@ -278,10 +282,12 @@ function CellPanel({
   const bgSvg = useMemo(
     () =>
       bgArtwork
-        ? // Stretched (non-uniform) to the preview, matching the printed sheet.
-          renderArtworkSvg(bgArtwork, bgColoring, { preserveAspectRatio: "none" })
+        ? // Painted in its own colors, stretched to the preview (matches the PDF).
+          renderArtworkSvg(bgArtwork, artworkOwnColoring(bgArtwork), {
+            preserveAspectRatio: "none",
+          })
         : null,
-    [bgArtwork, bgColoring],
+    [bgArtwork],
   );
 
   return (
@@ -391,7 +397,7 @@ function CellPanel({
       <section>
         <div className="flex items-center justify-between mb-1.5">
           <h4 className="text-[9px] font-black text-black uppercase tracking-wider truncate mr-2">
-            Surface · {bgVar.name}
+            Background · {bgVar.name}
           </h4>
           <BuildClipboard
             coloring={bgColoring}
