@@ -114,7 +114,7 @@ export function GroupBand({
             </div>
           ) : (
             <div
-              className="w-full h-full [&>svg]:w-full [&>svg]:h-full pointer-events-none"
+              className="w-full h-full overflow-hidden [&>svg]:w-full [&>svg]:h-full pointer-events-none"
               dangerouslySetInnerHTML={{ __html: thumbSvg }}
             />
           )}

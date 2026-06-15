@@ -124,7 +124,8 @@ export function renderArtworkSvg(
   const par = opts.preserveAspectRatio ?? "xMidYMid meet";
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" ` +
-    `preserveAspectRatio="${par}">` +
+    `preserveAspectRatio="${par}" width="100%" height="100%" ` +
+    `style="display:block;max-width:100%;max-height:100%">` +
     (defs.length ? `<defs>${defs.join("")}</defs>` : "") +
     body.join("") +
     `</svg>`

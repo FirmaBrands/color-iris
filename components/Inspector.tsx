@@ -332,7 +332,7 @@ function CellPanel({
           Live Proof
         </span>
         <div
-          className="w-16 h-16 z-10 [&>svg]:w-full [&>svg]:h-full"
+          className="w-16 h-16 z-10 overflow-hidden [&>svg]:w-full [&>svg]:h-full"
           dangerouslySetInnerHTML={{ __html: logoSvg }}
         />
       </div>

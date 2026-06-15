@@ -109,7 +109,7 @@ export function PreviewCell({
         )}
       >
         <div
-          className="[&>svg]:w-full [&>svg]:h-full"
+          className="max-w-full max-h-full overflow-hidden [&>svg]:w-full [&>svg]:h-full"
           style={{ width: `${logoScale * 100}%`, height: `${logoScale * 100}%` }}
           dangerouslySetInnerHTML={{ __html: logoSvg }}
         />
