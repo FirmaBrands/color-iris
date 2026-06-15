@@ -47,17 +47,17 @@ export function GroupMatrix({
         >
           {/* Corner: orientation */}
           <div className="bg-neutral-50 border-r border-b border-neutral-200 sticky left-0 z-40 select-none flex flex-col items-start justify-between p-3">
-            <div className="flex items-center gap-1 text-neutral-400">
-              <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest">
+            <div className="flex items-center gap-1 text-neutral-500">
+              <span className="text-[9.5px] font-mono font-bold uppercase tracking-widest">
                 Logos
               </span>
-              <ArrowRight size={9} />
+              <ArrowRight size={10} />
             </div>
-            <div className="flex items-center gap-1 text-neutral-400">
-              <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest">
+            <div className="flex items-center gap-1 text-neutral-500">
+              <span className="text-[9.5px] font-mono font-bold uppercase tracking-widest">
                 Backgrounds
               </span>
-              <ArrowDown size={9} />
+              <ArrowDown size={10} />
             </div>
           </div>
 
@@ -135,7 +135,7 @@ export function AddButton({
       <div className="w-7 h-7 shrink-0 bg-white border border-neutral-300 rounded-full flex items-center justify-center group-hover:border-neutral-900 group-hover:bg-neutral-900 group-hover:text-white transition-all shadow-sm">
         <Plus className="w-3.5 h-3.5" />
       </div>
-      <span className="text-[8.5px] font-bold uppercase tracking-widest text-neutral-400 group-hover:text-black transition-colors whitespace-nowrap">
+      <span className="text-[9.5px] font-bold uppercase tracking-widest text-neutral-500 group-hover:text-black transition-colors whitespace-nowrap">
         {label}
       </span>
     </button>

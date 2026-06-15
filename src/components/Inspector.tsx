@@ -18,6 +18,7 @@ import { artworkOwnColoring, effectiveColoring, logoColoringForGroup } from "../
 import { actions, getClipboardColoring, useAppState } from "../state/store";
 import { renderArtworkSvg } from "../svg/render";
 import { PaintEditor } from "./PaintEditor";
+import { Switch } from "./Switch";
 
 /**
  * Right-hand inspector panel. Shows the current selection — a variation
@@ -40,7 +41,7 @@ export function Inspector() {
     const variation = list.find((v) => v.id === selection.id);
     if (!variation) return null;
     title = selection.side === "logo" ? "Logo" : "Background";
-    subtitle = groups.length > 1 ? group.name : selection.side === "logo" ? "Column" : "Row";
+    subtitle = group.name;
     body = <VariationPanel group={group} side={selection.side} variation={variation} />;
   } else {
     const logoVar = group.logoVariations.find((v) => v.id === selection.logoId);
@@ -57,13 +58,14 @@ export function Inspector() {
       <div className="h-11 shrink-0 border-b border-neutral-200 flex items-center justify-between pl-4 pr-2">
         <div className="flex items-baseline gap-2 min-w-0">
           <span className="text-[10.5px] font-black uppercase tracking-[0.18em]">{title}</span>
-          <span className="text-[8.5px] font-mono text-neutral-400 uppercase tracking-wider truncate">
+          <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wider truncate">
             {subtitle}
           </span>
         </div>
         <button
           onClick={() => actions.select(null)}
-          className="p-1.5 rounded-md text-neutral-400 hover:text-black hover:bg-neutral-100 transition-colors"
+          aria-label="Close inspector"
+          className="p-1.5 rounded-md text-neutral-500 hover:text-black hover:bg-neutral-100 transition-colors"
           title="Close inspector (Esc)"
         >
           <X size={14} />
@@ -85,17 +87,29 @@ function EmptyInspector() {
           Inspector
         </span>
       </div>
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
-        <div className="w-11 h-11 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400">
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col items-center gap-4 p-6 text-center">
+        <div className="w-11 h-11 mt-6 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500">
           <MousePointerClick size={20} />
         </div>
-        <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-600 leading-relaxed">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-700 leading-relaxed">
           Click a logo, background, or cell
         </p>
-        <p className="text-[10px] text-neutral-400 leading-relaxed max-w-[200px]">
+        <p className="text-[11px] text-neutral-500 leading-relaxed max-w-[210px]">
           Select anything in the grid to view and edit its exact CMYK build here. Logos run across
           the top, backgrounds down the side.
         </p>
+
+        <div className="w-full mt-2 border border-neutral-200 rounded-lg p-3 text-left">
+          <p className="text-[9px] font-mono font-bold uppercase tracking-widest text-neutral-500 mb-2">
+            Editing gestures
+          </p>
+          <ul className="flex flex-col gap-1.5 text-[11px] text-neutral-600 leading-snug">
+            <li>Drag a <span className="font-bold">C/M/Y/K chip</span> up or down to scrub its value.</li>
+            <li>Type a <span className="font-bold">hex</span> code and press Enter for a CMYK build.</li>
+            <li><span className="font-bold">Double-click</span> a gradient bar to add a stop; drag handles to move them.</li>
+            <li>Hover a cell's corner to <span className="font-bold">exclude</span> it from the sheet.</li>
+          </ul>
+        </div>
       </div>
     </aside>
   );
@@ -132,7 +146,7 @@ function VariationPanel({
           title="Rename"
         />
         {!variation.isCustom && (
-          <p className="text-[8.5px] font-mono text-neutral-400 leading-relaxed uppercase tracking-wide">
+          <p className="text-[9px] font-mono text-neutral-500 leading-relaxed uppercase tracking-wide">
             Auto — recalculated from this group's source colors. Duplicate it to make a
             user-owned copy.
           </p>
@@ -157,6 +171,7 @@ function VariationPanel({
         </button>
         <button
           onClick={() => actions.duplicateVariation(group.id, side, variation.id)}
+          aria-label="Duplicate"
           className="h-8 px-2.5 border border-neutral-200 rounded-lg hover:border-neutral-400 hover:bg-neutral-50 text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
           title="Duplicate"
         >
@@ -166,6 +181,7 @@ function VariationPanel({
         {variation.isCustom && (
           <button
             onClick={() => actions.removeVariation(group.id, side, variation.id)}
+            aria-label="Delete"
             className="h-8 px-2.5 border border-neutral-200 rounded-lg hover:border-[#C75000] hover:bg-orange-50 text-neutral-500 hover:text-[#C75000] flex items-center transition-colors"
             title="Delete (⌫)"
           >
@@ -194,25 +210,6 @@ function VariationPanel({
 // ---------------------------------------------------------------------------
 // Build clipboard
 // ---------------------------------------------------------------------------
-
-/** Small animated toggle (visual only — wrap it in a button/label). */
-function Switch({ on }: { on: boolean }) {
-  return (
-    <span
-      className={cn(
-        "relative inline-block w-7 h-4 rounded-full transition-colors shrink-0",
-        on ? "bg-indigo-600" : "bg-neutral-300",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all",
-          on ? "left-3.5" : "left-0.5",
-        )}
-      />
-    </span>
-  );
-}
 
 /** Copy / paste buttons for a whole coloring (internal build clipboard). */
 function BuildClipboard({
@@ -384,7 +381,7 @@ function CellPanel({
       {hasSpecChange && (
         <div className="flex items-center gap-1.5 border border-neutral-200 rounded-md bg-pink-50/50 px-2.5 py-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-[#E6007E] shrink-0" />
-          <span className="font-mono text-[7.5px] font-bold tracking-tight uppercase text-neutral-700">
+          <span className="font-mono text-[9px] font-bold tracking-tight uppercase text-neutral-700">
             Spec adjusted — this cell deviates from its row/column
           </span>
         </div>

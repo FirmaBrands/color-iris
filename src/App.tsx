@@ -7,6 +7,7 @@ import { DropOverlay } from "./components/DropOverlay";
 import { GroupMatrix } from "./components/GroupMatrix";
 import { Inspector } from "./components/Inspector";
 import { StatusBar } from "./components/StatusBar";
+import { Modal } from "./components/Modal";
 
 export default function App() {
   const projectName = useAppState((s) => s.projectName);
@@ -17,6 +18,8 @@ export default function App() {
   const canUndo = useAppState((s) => s.canUndo);
   const canRedo = useAppState((s) => s.canRedo);
   const [isExporting, setIsExporting] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; filename: string } | null>(null);
+  const [confirmNew, setConfirmNew] = useState(false);
 
   useEffect(() => {
     if (!loadError) return;
@@ -24,28 +27,38 @@ export default function App() {
     return () => clearTimeout(t);
   }, [loadError]);
 
+  // Generate the proof and open it in an on-screen preview (no auto-download).
   const handleExport = async () => {
     if (isExporting) return;
     setIsExporting(true);
     try {
       const bytes = await generateProofPdf({ groups, projectName, logoScale });
       const blob = new Blob([bytes], { type: "application/pdf" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const safe = projectName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-") || "sheet";
-      link.download = `color-iris-proof-${safe}-${Date.now()}.pdf`;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      const filename = `color-iris-proof-${safe}-${Date.now()}.pdf`;
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev.url);
+        return { url, filename };
+      });
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleNew = () => {
-    if (window.confirm("Start a new project? The current sheet and its history are discarded.")) {
-      actions.resetProject();
-    }
+  const downloadPreview = () => {
+    if (!preview) return;
+    const link = document.createElement("a");
+    link.href = preview.url;
+    link.download = preview.filename;
+    link.click();
   };
+
+  const closePreview = () =>
+    setPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return null;
+    });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -125,7 +138,7 @@ export default function App() {
             className="flex items-center gap-2 min-w-0"
             title="Project name (printed on the proof sheet)"
           >
-            <span className="text-[8.5px] font-mono font-bold text-neutral-400 uppercase tracking-widest shrink-0">
+            <span className="text-[9px] font-mono font-bold text-neutral-500 uppercase tracking-widest shrink-0">
               Project
             </span>
             <input
@@ -150,7 +163,7 @@ export default function App() {
               </ToolButton>
             </div>
             <div className="flex items-center border border-neutral-200 rounded-lg overflow-hidden bg-white">
-              <ToolButton onClick={handleNew} title="New project (clears the autosave)">
+              <ToolButton onClick={() => setConfirmNew(true)} title="New project (clears the autosave)">
                 <FilePlus2 size={13} />
               </ToolButton>
               <span className="w-px h-4 bg-neutral-200" />
@@ -241,6 +254,81 @@ export default function App() {
 
       <StatusBar />
       <DropOverlay />
+
+      {confirmNew && (
+        <Modal
+          title="New project"
+          onClose={() => setConfirmNew(false)}
+          footer={
+            <>
+              <button
+                onClick={() => setConfirmNew(false)}
+                className="h-9 px-4 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-[11px] font-bold uppercase tracking-wider text-neutral-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  actions.resetProject();
+                  setConfirmNew(false);
+                }}
+                className="h-9 px-4 rounded-lg bg-[#C75000] hover:bg-[#a84300] text-white text-[11px] font-bold uppercase tracking-wider transition-colors"
+              >
+                Discard & start new
+              </button>
+            </>
+          }
+        >
+          <p className="text-[13px] text-neutral-700 leading-relaxed">
+            This clears the current sheet, its full edit history and the browser autosave. This
+            can't be undone.
+          </p>
+          <p className="text-[12px] text-neutral-500 leading-relaxed mt-3">
+            To keep your work, cancel and use the save button (
+            <span className="font-mono">.coloriris.json</span>) first.
+          </p>
+        </Modal>
+      )}
+
+      {preview && (
+        <Modal
+          title="Proof preview · A3 DeviceCMYK"
+          onClose={closePreview}
+          wide
+          footer={
+            <>
+              <button
+                onClick={closePreview}
+                className="h-9 px-4 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-[11px] font-bold uppercase tracking-wider text-neutral-700 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={downloadPreview}
+                className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-neutral-900 hover:bg-black text-white text-[11px] font-bold uppercase tracking-wider transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download PDF
+              </button>
+            </>
+          }
+        >
+          <object
+            data={preview.url}
+            type="application/pdf"
+            className="w-full h-[64vh] rounded-lg border border-neutral-200 bg-neutral-100"
+            aria-label="Proof sheet preview"
+          >
+            <p className="text-[12px] text-neutral-600 p-4">
+              Your browser can't display the PDF inline.{" "}
+              <button onClick={downloadPreview} className="underline font-bold">
+                Download it instead
+              </button>
+              .
+            </p>
+          </object>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -333,6 +421,7 @@ function ToolButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={title}
       className={cn(
         "p-2 transition-colors",
         disabled

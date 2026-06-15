@@ -17,7 +17,7 @@ export function groupAccent(index: number): string {
 /** Tiny caption before a control cluster. */
 function ClusterLabel({ text }: { text: string }) {
   return (
-    <span className="text-[7.5px] font-mono font-bold uppercase tracking-widest text-neutral-400 shrink-0">
+    <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-neutral-500 shrink-0">
       {text}
     </span>
   );
@@ -85,7 +85,7 @@ export function GroupBand({
         <span
           className="w-5 h-5 rounded-full text-white text-[9.5px] font-black flex items-center justify-center shrink-0"
           style={{ backgroundColor: accent }}
-          title={`Section ${index + 1}`}
+          title={`Group ${index + 1}`}
         >
           {index + 1}
         </span>
@@ -96,7 +96,7 @@ export function GroupBand({
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
           className="bg-transparent text-[11px] font-black uppercase tracking-wide text-black outline-none w-[84px] truncate border-b border-transparent focus:border-indigo-500 transition-colors shrink-0"
-          title="Rename this section"
+          title="Rename this group"
         />
 
         <span className="h-5 w-px bg-neutral-200 shrink-0" />
@@ -142,7 +142,7 @@ export function GroupBand({
           {group.masterHexes.map((hex, i) => (
             <span
               key={i}
-              className="font-mono text-[8px] font-bold tracking-tight text-neutral-600 leading-none whitespace-nowrap"
+              className="font-mono text-[10px] font-bold tracking-tight text-neutral-700 leading-tight whitespace-nowrap"
               title={`Source color C${i + 1} as a CMYK build`}
             >
               {formatCmyk(rgbToCmyk(hexToRgb(hex)))}
@@ -155,8 +155,9 @@ export function GroupBand({
             <span className="h-5 w-px bg-neutral-200 shrink-0" />
             <button
               onClick={() => actions.removeGroup(group.id)}
-              className="p-1 border border-neutral-300 rounded-md bg-white hover:border-[#C75000] text-neutral-400 hover:text-[#C75000] transition-colors shrink-0"
-              title="Delete this section"
+              aria-label="Delete this group"
+              className="p-1 border border-neutral-300 rounded-md bg-white hover:border-[#C75000] text-neutral-500 hover:text-[#C75000] transition-colors shrink-0"
+              title="Delete this group"
             >
               <Trash2 size={10} />
             </button>

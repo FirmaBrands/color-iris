@@ -142,8 +142,9 @@ export function PreviewCell({
           }}
           className={cn(
             "absolute top-1.5 right-1.5 z-30 p-1.5 bg-white/95 border border-neutral-300 rounded-md hover:border-black text-neutral-500 hover:text-black transition-all shadow-sm",
-            isExcluded ? "opacity-100" : "opacity-0 group-hover/cell:opacity-100",
+            isExcluded ? "opacity-100" : "opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100",
           )}
+          aria-label={isExcluded ? "Restore cell" : "Exclude cell from the sheet"}
           title={isExcluded ? "Restore cell" : "Exclude cell from the sheet"}
         >
           {isExcluded ? <Eye size={11} /> : <EyeOff size={11} />}
@@ -153,8 +154,15 @@ export function PreviewCell({
       {/* Omitted label */}
       {isOmitted && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-10">
-          <div className="bg-white border border-neutral-300 rounded-full px-2.5 py-1 shadow-sm text-[8px] font-black tracking-widest text-[#111] uppercase">
-            {isExcluded ? "Excluded" : "Omitted"}
+          <div
+            className="bg-white border border-neutral-300 rounded-full px-2.5 py-1 shadow-sm text-[9px] font-black tracking-widest text-[#111] uppercase"
+            title={
+              isExcluded
+                ? "This cell is excluded from the sheet"
+                : "Off because its logo or background is turned off"
+            }
+          >
+            {isExcluded ? "Excluded" : "Off"}
           </div>
         </div>
       )}
@@ -171,10 +179,10 @@ function ChangeChip({ side, from, to }: { side: string; from: Coloring; to: Colo
       className="max-w-full flex items-center gap-1 bg-white border border-[#E6007E] rounded px-1.5 py-0.5 shadow-sm"
       title={`${side} edited — was ${fromBuild}  →  now ${toBuild}`}
     >
-      <span className="text-[7px] font-black uppercase tracking-wider text-[#E6007E] shrink-0">
+      <span className="text-[8.5px] font-black uppercase tracking-wider text-[#E6007E] shrink-0">
         {side} ✎
       </span>
-      <span className="font-mono text-[7.5px] font-bold text-neutral-700 truncate">{toBuild}</span>
+      <span className="font-mono text-[9px] font-bold text-neutral-700 truncate">{toBuild}</span>
     </div>
   );
 }

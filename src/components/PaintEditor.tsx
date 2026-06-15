@@ -3,9 +3,9 @@ import { Check, Copy, Minus, Plus, Trash2 } from "lucide-react";
 import type { CMYK, Coloring, Paint, Stop } from "../types";
 import { DEFAULT_WASH_ANGLE } from "../types";
 import { cn } from "../lib/cn";
-import { clamp, hexToRgb, rgbToCmyk, tac, TAC_LIMIT } from "../color/convert";
+import { clamp, hexToRgb, rgbToCmyk } from "../color/convert";
 import { cmykToHex, stopsToCss } from "../color/simulate";
-import { formatCmyk, maxTac } from "../lib/coloring";
+import { formatCmyk } from "../lib/coloring";
 import { CMYKField } from "./CMYKField";
 
 /**
@@ -145,7 +145,8 @@ export function PaintEditor({
                     slots: [...coloring.slots, { ...coloring.slots[coloring.slots.length - 1] }],
                   });
                 }}
-                className="w-8 h-8 rounded-md border border-dashed border-neutral-300 bg-white hover:border-neutral-600 flex items-center justify-center text-neutral-400 hover:text-black transition-colors"
+                className="w-8 h-8 rounded-md border border-dashed border-neutral-300 bg-white hover:border-neutral-600 flex items-center justify-center text-neutral-500 hover:text-black transition-colors"
+                aria-label="Add a flat surface color"
                 title="Add a flat surface color (rendered side by side)"
               >
                 <Plus size={13} />
@@ -159,7 +160,8 @@ export function PaintEditor({
                       slots: coloring.slots.filter((_, j) => j !== sel),
                     });
                   }}
-                  className="w-8 h-8 rounded-md border border-dashed border-neutral-300 bg-white hover:border-neutral-600 flex items-center justify-center text-neutral-400 hover:text-black transition-colors"
+                  className="w-8 h-8 rounded-md border border-dashed border-neutral-300 bg-white hover:border-neutral-600 flex items-center justify-center text-neutral-500 hover:text-black transition-colors"
+                  aria-label="Remove the selected color"
                   title="Remove the selected color"
                 >
                   <Minus size={13} />
@@ -212,7 +214,8 @@ export function PaintEditor({
                         stops: gradientWash.stops.filter((_, j) => j !== sel),
                       });
                     }}
-                    className="text-neutral-400 hover:text-red-600 transition-colors"
+                    className="text-neutral-500 hover:text-[#C75000] transition-colors"
+                    aria-label="Remove stop"
                     title="Remove stop"
                   >
                     <Trash2 size={12} />
@@ -239,25 +242,15 @@ export function PaintEditor({
             }}
             className={cn(
               "flex items-center gap-1 text-[9px] font-mono tracking-wide transition-colors",
-              copied ? "text-emerald-600" : "text-neutral-400 hover:text-black",
+              copied ? "text-emerald-600" : "text-neutral-500 hover:text-black",
             )}
             title="Copy CMYK values to the clipboard"
           >
             {formatCmyk(selectedCmyk)}
             {copied ? <Check size={9} /> : <Copy size={9} />}
           </button>
-          {tac(selectedCmyk) > TAC_LIMIT && (
-            <span
-              className="text-[8px] font-black text-[#C75000] tracking-tight whitespace-nowrap"
-              title={`Total area coverage ${tac(selectedCmyk)}% exceeds the ${TAC_LIMIT}% coated-stock limit`}
-            >
-              TAC {tac(selectedCmyk)}
-            </span>
-          )}
         </div>
       </div>
-
-      <TacMeter value={maxTac(coloring)} />
     </div>
   );
 }
@@ -404,40 +397,3 @@ function HexInput({ onApply }: { onApply: (cmyk: CMYK) => void }) {
   );
 }
 
-/** Total-area-coverage meter with the coated-stock limit marked. */
-export function TacMeter({ value }: { value: number }) {
-  const scaleMax = 400;
-  const pct = clamp(value / scaleMax, 0, 1) * 100;
-  const limitPct = (TAC_LIMIT / scaleMax) * 100;
-  const over = value > TAC_LIMIT;
-  return (
-    <div title={`Highest total area coverage in this coloring. Above ${TAC_LIMIT}% expect drying/set-off problems on coated stock.`}>
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-neutral-400">
-          Max ink coverage
-        </span>
-        <span
-          className={cn(
-            "text-[9px] font-mono font-bold",
-            over ? "text-[#C75000]" : "text-neutral-500",
-          )}
-        >
-          {Math.round(value)}% / {TAC_LIMIT}%
-        </span>
-      </div>
-      <div className="relative h-1.5 bg-neutral-200 rounded-full">
-        <div
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-full",
-            over ? "bg-[#C75000]" : "bg-neutral-700",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-        <div
-          className="absolute top-[-3px] bottom-[-3px] w-[2px] rounded-full bg-neutral-900"
-          style={{ left: `${limitPct}%` }}
-        />
-      </div>
-    </div>
-  );
-}

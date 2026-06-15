@@ -3,9 +3,10 @@ import { Image as ImageIcon, X } from "lucide-react";
 import type { Variation } from "../types";
 import { cn } from "../lib/cn";
 import { coloringToCss } from "../color/simulate";
-import { coloringColors, exceedsTac, formatCmyk } from "../lib/coloring";
+import { coloringColors, formatCmyk } from "../lib/coloring";
 import { actions, useAppState } from "../state/store";
 import { UploadTarget } from "./UploadTarget";
+import { Switch } from "./Switch";
 
 /**
  * Column (logo profile) or row (background surface) header of a group's
@@ -82,33 +83,30 @@ export function VariationHeader({
             className="bg-transparent text-[11px] lg:text-[11.5px] font-black uppercase tracking-wide text-black outline-none w-full truncate border-b border-transparent focus:border-indigo-500 transition-colors cursor-text rounded-none"
             title="Rename"
           />
-          <div className="flex items-center gap-1">
-            {!variation.isCustom && (
-              <span className="text-[7.5px] font-mono font-bold tracking-widest uppercase text-neutral-500 bg-neutral-100 border border-neutral-200 rounded-full px-1.5 py-0.5 w-fit leading-none">
-                Auto
-              </span>
-            )}
-            {exceedsTac(variation.coloring) && (
-              <span
-                className="text-[7.5px] font-mono font-bold tracking-widest uppercase text-white bg-[#C75000] rounded-full px-1.5 py-0.5 w-fit leading-none"
-                title="Total area coverage exceeds the 300% coated-stock limit"
-              >
-                TAC
-              </span>
-            )}
-          </div>
+          {!variation.isCustom && (
+            <span className="text-[8.5px] font-mono font-bold tracking-widest uppercase text-neutral-600 bg-neutral-100 border border-neutral-200 rounded-full px-1.5 py-0.5 w-fit leading-none">
+              Auto
+            </span>
+          )}
         </div>
 
-        <input
-          type="checkbox"
-          checked={variation.enabled}
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) =>
-            actions.updateVariation(groupId, side, { ...variation, enabled: e.target.checked })
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            actions.updateVariation(groupId, side, { ...variation, enabled: !variation.enabled });
+          }}
+          role="switch"
+          aria-checked={variation.enabled}
+          aria-label={
+            side === "logo"
+              ? "Include this logo in the exported PDF"
+              : "Include this background in the exported PDF"
           }
-          className="w-3.5 h-3.5 shrink-0 cursor-pointer accent-indigo-600"
-          title={side === "logo" ? "Toggle logo" : "Toggle background"}
-        />
+          className="shrink-0 mt-0.5"
+          title={variation.enabled ? "On — included in the PDF" : "Off — hidden from the PDF"}
+        >
+          <Switch on={variation.enabled} />
+        </button>
       </div>
 
       {/* CMYK build values + swatch + (rows only) background-image control */}
@@ -117,18 +115,18 @@ export function VariationHeader({
           {builds.slice(0, 3).map((b, i) => (
             <span
               key={i}
-              className="font-mono text-[8px] font-bold tracking-tight text-neutral-500 leading-none truncate"
+              className="font-mono text-[10px] font-bold tracking-tight text-neutral-600 leading-tight truncate"
             >
               {b}
             </span>
           ))}
           {builds.length > 3 && (
-            <span className="font-mono text-[8px] font-bold text-neutral-400 leading-none">
+            <span className="font-mono text-[9px] font-bold text-neutral-500 leading-none">
               +{builds.length - 3} more
             </span>
           )}
           {isGradient && (
-            <span className="font-mono text-[7.5px] font-bold uppercase tracking-widest text-neutral-400 leading-none">
+            <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-neutral-500 leading-none">
               {variation.coloring.wash!.kind} grad
             </span>
           )}
@@ -158,7 +156,8 @@ export function VariationHeader({
             {variation.bgArtwork && (
               <button
                 onClick={() => actions.clearRowBgArtwork(groupId, variation.id)}
-                className="h-8 w-6 flex items-center justify-center border border-neutral-300 rounded-md bg-white hover:border-black text-neutral-400 hover:text-black transition-colors"
+                aria-label="Remove the background image"
+                className="h-8 w-6 flex items-center justify-center border border-neutral-300 rounded-md bg-white hover:border-black text-neutral-500 hover:text-black transition-colors"
                 title="Remove the background image"
               >
                 <X size={11} />

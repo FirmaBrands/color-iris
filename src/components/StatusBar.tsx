@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Keyboard } from "lucide-react";
 import { cn } from "../lib/cn";
-import { exceedsTac } from "../lib/coloring";
 import { actions, useAppState, type Zoom } from "../state/store";
 
 const ZOOM_LABELS: Array<{ z: Zoom; label: string }> = [
@@ -35,17 +34,10 @@ export function StatusBar() {
     0,
   );
   const overrideCount = groups.reduce((n, g) => n + Object.keys(g.overrides).length, 0);
-  const tacWarnings = groups.reduce(
-    (n, g) =>
-      n +
-      g.logoVariations.filter((v) => exceedsTac(v.coloring)).length +
-      g.bgVariations.filter((v) => exceedsTac(v.coloring)).length,
-    0,
-  );
 
   return (
     <footer className="h-8 shrink-0 border-t border-neutral-200 bg-white flex items-center justify-between px-4 select-none">
-      <div className="flex items-center gap-3 text-[8.5px] font-mono font-bold uppercase tracking-widest text-neutral-400 min-w-0">
+      <div className="flex items-center gap-3 text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-500 min-w-0">
         <span title="Logo groups on the sheet">
           {groups.length} {groups.length === 1 ? "group" : "groups"}
         </span>
@@ -56,13 +48,6 @@ export function StatusBar() {
         <span className="h-3 w-px bg-neutral-200" />
         <span title="Cells deviating from their row/column spec">
           {overrideCount} {overrideCount === 1 ? "override" : "overrides"}
-        </span>
-        <span className="h-3 w-px bg-neutral-200" />
-        <span
-          className={cn(tacWarnings > 0 && "text-[#C75000]")}
-          title="Variations whose ink coverage exceeds the 300% coated-stock limit"
-        >
-          {tacWarnings} TAC {tacWarnings === 1 ? "warning" : "warnings"}
         </span>
         {savedAt && (
           <>
@@ -80,7 +65,7 @@ export function StatusBar() {
 
       <div className="flex items-center gap-3">
         <span
-          className="hidden lg:block text-[8.5px] font-mono font-bold uppercase tracking-widest text-neutral-400"
+          className="hidden lg:block text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-500"
           title="On-screen simulation parameters"
         >
           Sim · Coated SWOP · Dot gain 14%
@@ -89,7 +74,7 @@ export function StatusBar() {
           className="flex items-center gap-1.5"
           title="Logo size as a fraction of each cell (matches the printed sheet)"
         >
-          <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest text-neutral-400">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-500">
             Logo
           </span>
           <input
@@ -100,14 +85,15 @@ export function StatusBar() {
             value={Math.round(logoScale * 100)}
             onChange={(e) => actions.setLogoScale(parseInt(e.target.value, 10) / 100)}
             className="ci-range w-20"
+            aria-label="Logo size as a fraction of each cell"
             style={{ background: "linear-gradient(to right, #d4d4d4, #525252)" }}
           />
-          <span className="text-[8.5px] font-mono font-bold text-neutral-500 w-7">
+          <span className="text-[10px] font-mono font-bold text-neutral-600 w-7">
             {Math.round(logoScale * 100)}%
           </span>
         </div>
         <div className="flex items-center gap-1.5" title="Cell density">
-          <span className="text-[8.5px] font-mono font-bold uppercase tracking-widest text-neutral-400">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-neutral-500">
             Cells
           </span>
           <div className="flex border border-neutral-200 rounded-md overflow-hidden">
@@ -115,8 +101,10 @@ export function StatusBar() {
               <button
                 key={z}
                 onClick={() => actions.setZoom(z)}
+                aria-label={`Cell density ${label}`}
+                aria-pressed={z === zoom}
                 className={cn(
-                  "h-5 w-6 text-[8.5px] font-bold transition-all",
+                  "h-5 w-6 text-[10px] font-bold transition-all",
                   z === zoom
                     ? "bg-neutral-900 text-white"
                     : "bg-white text-neutral-500 hover:text-black hover:bg-neutral-50",
@@ -132,9 +120,11 @@ export function StatusBar() {
         <div className="relative">
           <button
             onClick={() => setShowKeys((v) => !v)}
+            aria-label="Keyboard shortcuts"
+            aria-expanded={showKeys}
             className={cn(
               "p-1 rounded-md transition-colors",
-              showKeys ? "bg-neutral-900 text-white" : "text-neutral-400 hover:text-black hover:bg-neutral-100",
+              showKeys ? "bg-neutral-900 text-white" : "text-neutral-500 hover:text-black hover:bg-neutral-100",
             )}
             title="Keyboard shortcuts"
           >
@@ -144,7 +134,7 @@ export function StatusBar() {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowKeys(false)} />
               <div className="absolute bottom-[calc(100%+8px)] right-0 z-50 bg-white border border-neutral-200 rounded-lg shadow-xl p-3 w-[230px]">
-                <p className="text-[8.5px] font-mono font-bold uppercase tracking-widest text-neutral-400 mb-2">
+                <p className="text-[9.5px] font-mono font-bold uppercase tracking-widest text-neutral-500 mb-2">
                   Shortcuts
                 </p>
                 <div className="flex flex-col gap-1.5">

@@ -24,7 +24,7 @@ import type {
 } from "../types";
 import { DEFAULT_WASH_ANGLE } from "../types";
 import { linearEndpoints } from "../svg/render";
-import { tac, TAC_LIMIT } from "../color/convert";
+import { tac } from "../color/convert";
 import {
   artworkOwnColoring,
   coloringColors,
@@ -50,7 +50,6 @@ const GROUP_GAP = 14; // gap between stacked group blocks
 const INK_BLACK = cmyk(0, 0, 0, 1);
 const INK_GRAY = cmyk(0, 0, 0, 0.55);
 const INK_LIGHT = cmyk(0, 0, 0, 0.25);
-const INK_WARN = cmyk(0, 0.45, 1, 0);
 const INK_PAPER = cmyk(0, 0, 0, 0);
 const INK_BAND = cmyk(0, 0, 0, 0.06);
 
@@ -559,12 +558,6 @@ function drawHeader(
     page.drawText(build, {
       x: pos.x + 8, y, size: 5, font: helv, color: INK_GRAY,
     });
-    if (tac(c) > TAC_LIMIT) {
-      const w = helv.widthOfTextAtSize(build, 5);
-      page.drawText(`TAC ${tac(c)}`, {
-        x: pos.x + 10.5 + w, y, size: 5, font: helvBold, color: INK_WARN,
-      });
-    }
     y -= 8;
   });
   if (colors.length > 3) {

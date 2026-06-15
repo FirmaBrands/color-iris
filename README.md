@@ -20,13 +20,11 @@ and export a **fully vector, DeviceCMYK-encoded A3 PDF** proof sheet.
   (double-click to add a stop) and an angle control for linear washes,
   honored identically by the CSS preview, the SVG renderer and the PDF
   shadings.
-- **TAC meter** — every editor shows the coloring's max total area coverage
-  against the 300% coated-stock limit; the status bar counts warnings.
 - **Presets** — surface quick-adds (Cream, Kraft, Navy, Rich Black, …) and
   profile quick-adds (Mono Black, Reversed).
 - **Global drag & drop** — drop an SVG anywhere and choose Logo or
   Background.
-- **Status bar** — sheet stats, override/TAC counts, autosave time and a
+- **Status bar** — sheet stats, override counts, autosave time and a
   cell-density zoom (S/M/L).
 - **Shortcuts** — ⌘Z undo, ⇧⌘Z redo, ⌘E export PDF, Esc closes the
   inspector. Arrow keys walk the matrix (cells flow into the column/row
@@ -105,15 +103,13 @@ scripts/
   with per-stop offsets) that overrides the slots for that variation.
 - **Override** — a per-cell replacement of the logo and/or surface coloring,
   or an exclusion of the cell from the sheet.
-- **TAC** — total area coverage. Builds above 300% are flagged in the UI and
-  on the printed sheet.
 
 ### PDF output
 
 A3 landscape (1190.55 × 841.89 pt), everything vector and DeviceCMYK —
 including text and hairlines. Gradients are native PDF Type 2/3 shadings with
 stitching functions, so stop offsets survive exactly. The sheet carries crop
-marks, per-variation ink builds with swatch chips, TAC warnings, document
-metadata and a spec footer.
+marks, per-variation ink builds with swatch chips, document metadata and a
+spec footer.
 
 The previous implementation is archived in `legacy-backup.zip`.

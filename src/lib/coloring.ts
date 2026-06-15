@@ -1,6 +1,6 @@
 /** Shared helpers for resolving colorings, refs and ink coverage. */
 import type { Artwork, CellOverride, CMYK, ColorRef, Coloring, LogoGroup, Paint, Variation } from "../types";
-import { hexToRgb, rgbToCmyk, separate, SEPARATION_ALGORITHMS, tac, TAC_LIMIT } from "../color/convert";
+import { hexToRgb, rgbToCmyk, separate, SEPARATION_ALGORITHMS } from "../color/convert";
 
 /**
  * A coloring that paints an artwork in its OWN palette colors (each slot =
@@ -60,15 +60,6 @@ export function coloringColors(c: Coloring): CMYK[] {
     return c.wash.kind === "solid" ? [c.wash.cmyk] : c.wash.stops.map((s) => s.cmyk);
   }
   return c.slots;
-}
-
-/** Highest total area coverage used by the coloring. */
-export function maxTac(c: Coloring): number {
-  return Math.max(0, ...coloringColors(c).map(tac));
-}
-
-export function exceedsTac(c: Coloring): boolean {
-  return maxTac(c) > TAC_LIMIT;
 }
 
 /** Display string like "C60 M40 Y40 K100". */
