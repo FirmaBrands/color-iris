@@ -6,6 +6,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  MousePointerClick,
   RotateCcw,
   Trash2,
   X,
@@ -27,9 +28,8 @@ export function Inspector() {
   const selection = useAppState((s) => s.selection);
   const groups = useAppState((s) => s.groups);
 
-  if (!selection) return null;
-  const group = groups.find((g) => g.id === selection.groupId);
-  if (!group) return null;
+  const group = selection ? groups.find((g) => g.id === selection.groupId) : undefined;
+  if (!selection || !group) return <EmptyInspector />;
 
   let body: React.ReactNode = null;
   let title = "";
@@ -71,6 +71,31 @@ export function Inspector() {
       </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-3.5">
         {body}
+      </div>
+    </aside>
+  );
+}
+
+/** Shown when nothing is selected — makes the click-to-edit flow discoverable. */
+function EmptyInspector() {
+  return (
+    <aside className="w-[288px] shrink-0 border-l border-neutral-200 bg-white flex flex-col min-h-0 z-30 shadow-[-4px_0_12px_rgba(0,0,0,0.03)]">
+      <div className="h-11 shrink-0 border-b border-neutral-200 flex items-center pl-4">
+        <span className="text-[10.5px] font-black uppercase tracking-[0.18em] text-neutral-400">
+          Inspector
+        </span>
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+        <div className="w-11 h-11 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400">
+          <MousePointerClick size={20} />
+        </div>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-600 leading-relaxed">
+          Click a logo, background, or cell
+        </p>
+        <p className="text-[10px] text-neutral-400 leading-relaxed max-w-[200px]">
+          Select anything in the grid to view and edit its exact CMYK build here. Logos run across
+          the top, backgrounds down the side.
+        </p>
       </div>
     </aside>
   );

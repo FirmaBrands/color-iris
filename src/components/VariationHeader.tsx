@@ -3,7 +3,7 @@ import { Image as ImageIcon, X } from "lucide-react";
 import type { Variation } from "../types";
 import { cn } from "../lib/cn";
 import { coloringToCss } from "../color/simulate";
-import { exceedsTac } from "../lib/coloring";
+import { coloringColors, exceedsTac, formatCmyk } from "../lib/coloring";
 import { actions, useAppState } from "../state/store";
 import { UploadTarget } from "./UploadTarget";
 
@@ -36,6 +36,8 @@ export function VariationHeader({
     selection.id === variation.id;
   const isOmitted = !variation.enabled;
   const swatchCss = coloringToCss(variation.coloring);
+  const builds = coloringColors(variation.coloring).map(formatCmyk);
+  const isGradient = !!variation.coloring.wash && variation.coloring.wash.kind !== "solid";
 
   // Keep the selected header visible when the inspector opens/resizes the matrix.
   useEffect(() => {
@@ -109,16 +111,37 @@ export function VariationHeader({
         />
       </div>
 
-      {/* Swatch + (rows only) background-image control */}
-      <div className="w-full mt-2 flex items-center gap-1.5">
-        <div
-          className={cn(
-            "block h-8 flex-1 rounded-md border shadow-sm transition-all",
-            isSelected ? "border-indigo-600" : "border-black/15 group-hover:border-neutral-500",
+      {/* CMYK build values + swatch + (rows only) background-image control */}
+      <div className="w-full mt-2 flex flex-col gap-1">
+        <div className="flex flex-col gap-0.5" title="CMYK ink build">
+          {builds.slice(0, 3).map((b, i) => (
+            <span
+              key={i}
+              className="font-mono text-[8px] font-bold tracking-tight text-neutral-500 leading-none truncate"
+            >
+              {b}
+            </span>
+          ))}
+          {builds.length > 3 && (
+            <span className="font-mono text-[8px] font-bold text-neutral-400 leading-none">
+              +{builds.length - 3} more
+            </span>
           )}
-          style={{ background: swatchCss }}
-        />
-        {side === "bg" && (
+          {isGradient && (
+            <span className="font-mono text-[7.5px] font-bold uppercase tracking-widest text-neutral-400 leading-none">
+              {variation.coloring.wash!.kind} grad
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div
+            className={cn(
+              "block h-8 flex-1 rounded-md border shadow-sm transition-all",
+              isSelected ? "border-indigo-600" : "border-black/15 group-hover:border-neutral-500",
+            )}
+            style={{ background: swatchCss }}
+          />
+          {side === "bg" && (
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             <UploadTarget
               onLoad={(svg) => actions.loadRowBgSvg(groupId, variation.id, svg)}
@@ -143,6 +166,7 @@ export function VariationHeader({
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
