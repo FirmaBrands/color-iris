@@ -99,8 +99,6 @@ export async function generateProofPdf(input: ProofInput): Promise<Uint8Array> {
   const helvBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
   drawCropMarks(page);
-  drawTitleBlock(page, helv, helvBold, name, cols.length, nRows);
-  drawFooter(page, helv);
 
   // Center separation line.
   page.drawLine({
@@ -121,7 +119,9 @@ export async function generateProofPdf(input: ProofInput): Promise<Uint8Array> {
     return pdfDoc.save();
   }
 
-  // The same sheet on both halves.
+  // The same sheet on both halves — each carries its own name + date so a
+  // trimmed half is a complete, labelled proof.
+  const date = new Date().toISOString().slice(0, 16).replace("T", " ");
   const halfW = (PAGE_W - 2 * MARGIN - CENTER_GAP) / 2;
   const halves = [MARGIN, PAGE_W / 2 + CENTER_GAP / 2];
   for (const x0 of halves) {
@@ -132,6 +132,8 @@ export async function generateProofPdf(input: ProofInput): Promise<Uint8Array> {
       sections,
       overrides,
       logoScale,
+      name,
+      date,
     });
   }
 
@@ -154,10 +156,17 @@ function drawSheet(
     sections: GroupSection[];
     overrides: Record<string, CellOverride>;
     logoScale: number;
+    name: string;
+    date: string;
   },
 ) {
-  const { x0, width, cols, sections, overrides, logoScale } = opts;
+  const { x0, width, cols, sections, overrides, logoScale, name, date } = opts;
   const nRows = sections.reduce((n, s) => n + s.rows.length, 0);
+
+  // With more than one group, each band also prints that group's own ink
+  // builds per profile, so it needs a little more height.
+  const multiGroup = sections.length > 1;
+  const bandH = multiGroup ? 24 : BAND_H;
 
   const gridTop = PAGE_H - MARGIN - TITLE_H;
   const gridBottom = MARGIN + FOOTER_H;
@@ -165,7 +174,10 @@ function drawSheet(
   const gridRight = x0 + width;
   const cellTop = gridTop - HEADER_ROW_H;
   const cellW = (gridRight - gridLeft) / cols.length;
-  const cellH = (cellTop - gridBottom - sections.length * BAND_H) / nRows;
+  const cellH = (cellTop - gridBottom - sections.length * bandH) / nRows;
+
+  // Per-half title: project name + generation date.
+  drawHalfTitle(page, helv, helvBold, name, date, x0, width);
 
   // Column headers.
   cols.forEach((col, ci) => {
@@ -180,18 +192,29 @@ function drawSheet(
   let yCursor = cellTop;
   for (const { group, rows } of sections) {
     // Band: group name across the half (header column included).
-    const bandY = yCursor - BAND_H;
+    const bandY = yCursor - bandH;
     page.drawRectangle({
-      x: x0, y: bandY, width: gridRight - x0, height: BAND_H,
+      x: x0, y: bandY, width: gridRight - x0, height: bandH,
       color: INK_BAND,
     });
+    const nameMaxW = multiGroup ? HEADER_COL_W - 8 : width - 12;
     let bandLabel = group.name.toUpperCase();
-    while (bandLabel.length > 4 && helvBold.widthOfTextAtSize(bandLabel, 6.5) > width - 12) {
+    while (bandLabel.length > 4 && helvBold.widthOfTextAtSize(bandLabel, 6.5) > nameMaxW) {
       bandLabel = bandLabel.slice(0, -1);
     }
+    const labelY = bandY + (bandH - 6.5) / 2 + 0.5;
     page.drawText(bandLabel, {
-      x: x0 + 5, y: bandY + 4.5, size: 6.5, font: helvBold, color: INK_BLACK,
+      x: x0 + 5, y: labelY, size: 6.5, font: helvBold, color: INK_BLACK,
     });
+    // Per-group ink builds: each profile's actual CMYK for this group's logo.
+    if (multiGroup) {
+      cols.forEach((col, ci) => {
+        drawGroupBuild(
+          page, helv, group, col,
+          gridLeft + ci * cellW + 4, labelY, cellW - 8,
+        );
+      });
+    }
     yCursor = bandY;
 
     for (const row of rows) {
@@ -563,31 +586,53 @@ function drawOmittedCell(page: any, helv: any, x: number, y: number, w: number, 
   });
 }
 
-function drawTitleBlock(
+/** Project name + generation date, printed at the top of one half-sheet. */
+function drawHalfTitle(
   page: any, helv: any, helvBold: any,
-  name: string, nCols: number, nRows: number,
+  name: string, date: string, x0: number, width: number,
 ) {
-  const yTitle = PAGE_H - MARGIN - 18;
-  page.drawText(name.toUpperCase(), {
-    x: MARGIN, y: yTitle, size: 19, font: helvBold, color: INK_BLACK,
+  const yTitle = PAGE_H - MARGIN - 16;
+  let label = name.toUpperCase();
+  while (label.length > 1 && helvBold.widthOfTextAtSize(label, 15) > width - 4) {
+    label = label.slice(0, -1);
+  }
+  page.drawText(label, {
+    x: x0, y: yTitle, size: 15, font: helvBold, color: INK_BLACK,
   });
-  page.drawText(
-    `CMYK PROOF MATRIX  ·  ${nCols} LOGO PROFILE${nCols === 1 ? "" : "S"} × ${nRows} SURFACE${nRows === 1 ? "" : "S"}  ·  DUPLICATE SHEETS LEFT / RIGHT`,
-    { x: MARGIN, y: yTitle - 13, size: 7, font: helv, color: INK_GRAY },
-  );
-  const date = new Date().toISOString().slice(0, 16).replace("T", " ");
-  const meta = `GENERATED ${date} UTC`;
-  const mw = helv.widthOfTextAtSize(meta, 7);
-  page.drawText(meta, {
-    x: PAGE_W - MARGIN - mw, y: yTitle, size: 7, font: helv, color: INK_GRAY,
+  page.drawText(`GENERATED ${date} UTC`, {
+    x: x0, y: yTitle - 13, size: 7, font: helv, color: INK_GRAY,
   });
 }
 
-function drawFooter(page: any, helv: any) {
-  page.drawText(
-    `COLOR IRIS  ·  DEVICECMYK VECTOR PROOF  ·  A3 LANDSCAPE 420 × 297 MM  ·  TWIN SHEETS WITH CENTER SEPARATION  ·  TAC REFERENCE LIMIT ${TAC_LIMIT}%  ·  COLORS ARE UNCALIBRATED PROCESS BUILDS — VERIFY ON A CALIBRATED PROOFER`,
-    { x: MARGIN, y: MARGIN - 14, size: 6, font: helv, color: INK_GRAY },
-  );
+/** One profile's actual ink builds for a given group's logo, drawn in its band. */
+function drawGroupBuild(
+  page: any, helv: any,
+  group: LogoGroup, col: Variation,
+  x: number, y: number, maxW: number,
+) {
+  const colors = coloringColors(logoColoringForGroup(col, group));
+  const limit = x + maxW;
+  let cx = x;
+  for (let i = 0; i < colors.length; i++) {
+    const c = colors[i];
+    if (cx + 6 > limit) {
+      page.drawText("…", { x: cx, y, size: 5, font: helv, color: INK_GRAY });
+      return;
+    }
+    page.drawRectangle({
+      x: cx, y: y - 0.5, width: 4.5, height: 4.5,
+      color: toCmyk(c), borderColor: INK_LIGHT, borderWidth: 0.3,
+    });
+    cx += 6;
+    const build = formatCmyk(c);
+    const bw = helv.widthOfTextAtSize(build, 5);
+    if (cx + bw > limit) {
+      page.drawText(`+${colors.length - i}`, { x: cx, y, size: 5, font: helv, color: INK_GRAY });
+      return;
+    }
+    page.drawText(build, { x: cx, y, size: 5, font: helv, color: INK_GRAY });
+    cx += bw + 6;
+  }
 }
 
 function drawCropMarks(page: any) {

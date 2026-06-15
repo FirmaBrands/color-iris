@@ -3,6 +3,7 @@ import { Plus, Trash2, Upload, X } from "lucide-react";
 import type { LogoGroup } from "../types";
 import { cn } from "../lib/cn";
 import { hexToRgb, rgbToCmyk } from "../color/convert";
+import { formatCmyk } from "../lib/coloring";
 import { actions } from "../state/store";
 import { renderArtworkSvg } from "../svg/render";
 
@@ -163,10 +164,16 @@ export function GroupBand({
           title="This section's logo — click (or drop an SVG) to replace it"
           className="relative w-8 h-8 bg-white border border-neutral-300 rounded-md p-1 cursor-pointer hover:border-neutral-600 transition-colors shrink-0 group/thumb shadow-sm"
         >
-          <div
-            className="w-full h-full [&>svg]:w-full [&>svg]:h-full pointer-events-none"
-            dangerouslySetInnerHTML={{ __html: thumbSvg }}
-          />
+          {group.logoIsDefault ? (
+            <div className="w-full h-full flex items-center justify-center text-neutral-400 pointer-events-none">
+              <Upload size={14} />
+            </div>
+          ) : (
+            <div
+              className="w-full h-full [&>svg]:w-full [&>svg]:h-full pointer-events-none"
+              dangerouslySetInnerHTML={{ __html: thumbSvg }}
+            />
+          )}
           <span className="absolute inset-0 rounded-md bg-black/55 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
             <Upload size={11} />
           </span>
@@ -182,6 +189,20 @@ export function GroupBand({
               label={`C${i + 1}`}
               onChange={(h) => actions.setMasterHex(group.id, i, h)}
             />
+          ))}
+        </div>
+
+        {/* This group's CMYK ink builds (separated from its source colors) */}
+        <ClusterLabel text="CMYK" />
+        <div className="flex flex-col justify-center gap-0.5 shrink-0">
+          {group.masterHexes.map((hex, i) => (
+            <span
+              key={i}
+              className="font-mono text-[8px] font-bold tracking-tight text-neutral-600 leading-none whitespace-nowrap"
+              title={`Source color C${i + 1} as a CMYK build`}
+            >
+              {formatCmyk(rgbToCmyk(hexToRgb(hex)))}
+            </span>
           ))}
         </div>
 
